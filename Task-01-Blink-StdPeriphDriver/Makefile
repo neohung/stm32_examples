@@ -6,7 +6,7 @@ SRCS = main.c stm32f4xx_it.c system_stm32f4xx.c syscalls.c
 #SRCS += usbd_usr.c usbd_cdc_vcp.c usbd_desc.c usb_bsp.c
 
 # Project name
-PROJ_NAME=stm32f4_blink
+PROJ_NAME=Task-01-Blink-StdPeriphDriver
 OUTPATH=build
 
 ###################################################
