@@ -1,2 +1,4 @@
 .metadata
 *.tmp
+*.a
+*.o
