@@ -96,6 +96,8 @@ static void mainThread(void const *arg)
 	 vTaskDelete( NULL );
 }
 
+
+
 int main(void) {
 	init();
     printf("init\r\n");

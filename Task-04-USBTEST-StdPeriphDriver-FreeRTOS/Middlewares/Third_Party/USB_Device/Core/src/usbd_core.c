@@ -174,7 +174,7 @@ static uint8_t USBD_SetupStage(USB_OTG_CORE_HANDLE *pdev)
   USB_SETUP_REQ req;
   
   USBD_ParseSetupRequest(pdev , &req);
-  
+  printf("USBD_SetupStage: req.bmRequest=0x%x\r\n", req.bmRequest & 0x1F);
   switch (req.bmRequest & 0x1F) 
   {
   case USB_REQ_RECIPIENT_DEVICE:   
@@ -221,12 +221,14 @@ static uint8_t USBD_DataOutStage(USB_OTG_CORE_HANDLE *pdev , uint8_t epnum)
           /* in slave mode this, is handled by the RxSTSQLvl ISR */
           ep->xfer_buff += ep->maxpacket; 
         }        
+        printf("USBD_DataOutStage: enum=0, state=USB_OTG_EP0_DATA_OUT ,USBD_CtlContinueRx\r\n");
         USBD_CtlContinueRx (pdev, 
                             ep->xfer_buff,
                             MIN(ep->rem_data_len ,ep->maxpacket));
       }
       else
       {
+    	  printf("USBD_DataOutStage: enum=0, state !=USB_OTG_EP0_DATA_OUT,call usbd_XXX_EP0_RxReady\r\n");
         if((pdev->dev.class_cb->EP0_RxReady != NULL)&&
            (pdev->dev.device_status == USB_OTG_CONFIGURED))
         {
@@ -268,6 +270,7 @@ static uint8_t USBD_DataInStage(USB_OTG_CORE_HANDLE *pdev , uint8_t epnum)
           /* in slave mode this, is handled by the TxFifoEmpty ISR */
           ep->xfer_buff += ep->maxpacket;
         }
+        printf("1 USBD_DataInStage: enum=0 call USBD_CtlContinueSendData\r\n");
         USBD_CtlContinueSendData (pdev, 
                                   ep->xfer_buff, 
                                   ep->rem_data_len);
@@ -278,7 +281,7 @@ static uint8_t USBD_DataInStage(USB_OTG_CORE_HANDLE *pdev , uint8_t epnum)
            (ep->total_data_len >= ep->maxpacket) &&
              (ep->total_data_len < ep->ctl_data_len ))
         {
-          
+        	printf("2 USBD_DataInStage: enum=0. call USBD_CtlContinueSendData\r\n");
           USBD_CtlContinueSendData(pdev , NULL, 0);
           ep->ctl_data_len = 0;
         }
@@ -287,8 +290,10 @@ static uint8_t USBD_DataInStage(USB_OTG_CORE_HANDLE *pdev , uint8_t epnum)
           if((pdev->dev.class_cb->EP0_TxSent != NULL)&&
              (pdev->dev.device_status == USB_OTG_CONFIGURED))
           {
+        	printf("USBD_DataInStage: call usbd_XXX_EP0_TxSent\r\n");
             pdev->dev.class_cb->EP0_TxSent(pdev); 
           }          
+          printf("USBD_DataInStage:  USBD_CtlReceiveStatus\r\n");
           USBD_CtlReceiveStatus(pdev);
         }
       }
@@ -297,6 +302,7 @@ static uint8_t USBD_DataInStage(USB_OTG_CORE_HANDLE *pdev , uint8_t epnum)
   else if((pdev->dev.class_cb->DataIn != NULL)&& 
           (pdev->dev.device_status == USB_OTG_CONFIGURED))
   {
+	printf("USBD_DataInStage: enum!=0 call usbd_XXX_DataIn\r\n");
     pdev->dev.class_cb->DataIn(pdev, epnum); 
   }  
   return USBD_OK;

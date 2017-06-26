@@ -453,6 +453,7 @@ static uint32_t DCD_HandleInEP_ISR(USB_OTG_CORE_HANDLE *pdev)
         USB_OTG_MODIFY_REG32(&pdev->regs.DREGS->DIEPEMPMSK, fifoemptymsk, 0);
         CLEAR_IN_EP_INTR(epnum, xfercompl);
         /* TX COMPLETE */
+        printf("DCD_HandleInEP_ISR: TX COMPLETE call USBD_DataInStage\r\n");
         USBD_DCD_INT_fops->DataInStage(pdev , epnum);
         
         if (pdev->cfg.dma_enable == 1)
@@ -523,9 +524,9 @@ static uint32_t DCD_HandleOutEP_ISR(USB_OTG_CORE_HANDLE *pdev)
   
   while ( ep_intr )
   {
+	  printf("DCD_HandleOutEP_ISR: epnum:%d, (ep_intr&0x1)=%d\r\n",epnum,(ep_intr&0x1));
     if (ep_intr&0x1)
     {
-      
       doepint.d32 = USB_OTG_ReadDevOutEP_itr(pdev, epnum);
       
       /* Transfer complete */
@@ -542,6 +543,7 @@ static uint32_t DCD_HandleOutEP_ISR(USB_OTG_CORE_HANDLE *pdev)
         }
         /* Inform upper layer: data ready */
         /* RX COMPLETE */
+        printf("DCD_HandleOutEP_ISR: epnum:%d, call USBD_DataOutStage\r\n",epnum);
         USBD_DCD_INT_fops->DataOutStage(pdev , epnum);
         
         if (pdev->cfg.dma_enable == 1)
@@ -570,6 +572,7 @@ static uint32_t DCD_HandleOutEP_ISR(USB_OTG_CORE_HANDLE *pdev)
         
         /* inform the upper layer that a setup packet is available */
         /* SETUP COMPLETE */
+    	printf("DCD_HandleOutEP_ISR: call USBD_SetupStage\r\n");
         USBD_DCD_INT_fops->SetupStage(pdev);
         CLEAR_OUT_EP_INTR(epnum, setup);
       }
@@ -622,7 +625,7 @@ static uint32_t DCD_HandleRxStatusQueueLevel_ISR(USB_OTG_CORE_HANDLE *pdev)
   status.d32 = USB_OTG_READ_REG32( &pdev->regs.GREGS->GRXSTSP );
   
   ep = &pdev->dev.out_ep[status.b.epnum];
-  
+  printf("[DCD_HandleRxStatusQueueLevel_ISR] status.b.pktsts=%d\r\n",status.b.pktsts);
   switch (status.b.pktsts)
   {
   case STS_GOUT_NAK:
