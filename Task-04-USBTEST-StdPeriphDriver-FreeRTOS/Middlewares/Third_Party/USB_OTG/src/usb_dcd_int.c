@@ -228,13 +228,13 @@ uint32_t USBD_OTG_ISR_Handler (USB_OTG_CORE_HANDLE *pdev)
     }
     if (gintr_status.b.outepintr)
     {
-    	printf("gintr_status.b.outepintr\r\n");
+    	//printf("gintr_status.b.outepintr\r\n");
       retval |= DCD_HandleOutEP_ISR(pdev);
     }    
     
     if (gintr_status.b.inepint)
     {
-    	printf("gintr_status.b.inepint\r\n");
+    	//printf("gintr_status.b.inepint\r\n");
       retval |= DCD_HandleInEP_ISR(pdev);
     }
     
@@ -250,13 +250,13 @@ uint32_t USBD_OTG_ISR_Handler (USB_OTG_CORE_HANDLE *pdev)
     
     if (gintr_status.b.wkupintr)
     {
-    	printf("gintr_status.b.wkupintr\r\n");
+    	//printf("gintr_status.b.wkupintr\r\n");
       retval |= DCD_HandleResume_ISR(pdev);
     }
     
     if (gintr_status.b.usbsuspend)
     {
-    	printf("gintr_status.b.usbsuspend\r\n");
+    	//printf("gintr_status.b.usbsuspend\r\n");
       retval |= DCD_HandleUSBSuspend_ISR(pdev);
     }
     if (gintr_status.b.sofintr)
@@ -267,32 +267,32 @@ uint32_t USBD_OTG_ISR_Handler (USB_OTG_CORE_HANDLE *pdev)
     
     if (gintr_status.b.rxstsqlvl)
     {
-    	printf("gintr_status.b.rxstsqlvl\r\n");
+    	//printf("gintr_status.b.rxstsqlvl\r\n");
       retval |= DCD_HandleRxStatusQueueLevel_ISR(pdev);
       
     }
     
     if (gintr_status.b.usbreset)
     {
-    	printf("gintr_status.b.usbreset\r\n");
+    	//printf("gintr_status.b.usbreset\r\n");
       retval |= DCD_HandleUsbReset_ISR(pdev);
       
     }
     if (gintr_status.b.enumdone)
     {
-    	printf("gintr_status.b.enumdone\r\n");
+    	//printf("gintr_status.b.enumdone\r\n");
       retval |= DCD_HandleEnumDone_ISR(pdev);
     }
     
     if (gintr_status.b.incomplisoin)
     {
-    	printf("gintr_status.b.incomplisoin\r\n");
+    	//printf("gintr_status.b.incomplisoin\r\n");
       retval |= DCD_IsoINIncomplete_ISR(pdev);
     }
 
     if (gintr_status.b.incomplisoout)
     {
-    	printf("gintr_status.b.incomplisoout\r\n");
+    	//printf("gintr_status.b.incomplisoout\r\n");
       retval |= DCD_IsoOUTIncomplete_ISR(pdev);
     }    
 #ifdef VBUS_SENSING_ENABLED
@@ -591,6 +591,7 @@ static uint32_t DCD_HandleOutEP_ISR(USB_OTG_CORE_HANDLE *pdev)
 */
 static uint32_t DCD_HandleSof_ISR(USB_OTG_CORE_HANDLE *pdev)
 {
+  //printf("DCD_HandleSof_ISR: call sof function\r\n");
   USB_OTG_GINTSTS_TypeDef  GINTSTS;
   
   
@@ -625,7 +626,7 @@ static uint32_t DCD_HandleRxStatusQueueLevel_ISR(USB_OTG_CORE_HANDLE *pdev)
   status.d32 = USB_OTG_READ_REG32( &pdev->regs.GREGS->GRXSTSP );
   
   ep = &pdev->dev.out_ep[status.b.epnum];
-  printf("[DCD_HandleRxStatusQueueLevel_ISR] status.b.pktsts=%d\r\n",status.b.pktsts);
+  //printf("[DCD_HandleRxStatusQueueLevel_ISR] status.b.pktsts=%d\r\n",status.b.pktsts);
   switch (status.b.pktsts)
   {
   case STS_GOUT_NAK:

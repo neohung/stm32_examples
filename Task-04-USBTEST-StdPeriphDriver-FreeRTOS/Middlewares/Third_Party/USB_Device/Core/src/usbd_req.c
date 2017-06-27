@@ -192,7 +192,7 @@ USBD_Status  USBD_StdDevReq (USB_OTG_CORE_HANDLE  *pdev, USB_SETUP_REQ  *req)
 USBD_Status  USBD_StdItfReq (USB_OTG_CORE_HANDLE  *pdev, USB_SETUP_REQ  *req)
 {
   USBD_Status ret = USBD_OK; 
-  
+  printf("USBD_StdItfReq: pdev->dev.device_status=%d\r\n",pdev->dev.device_status);
   switch (pdev->dev.device_status) 
   {
   case USB_OTG_CONFIGURED:
@@ -386,6 +386,7 @@ static void USBD_GetDescriptor(USB_OTG_CORE_HANDLE  *pdev,
     break;
     
   case USB_DESC_TYPE_STRING:
+		 printf("USB_DESC_TYPE_STRING: (req->wValue)=%d\r\n",(uint8_t)(req->wValue));
     switch ((uint8_t)(req->wValue))
     {
     case USBD_IDX_LANGID_STR:
@@ -413,6 +414,7 @@ static void USBD_GetDescriptor(USB_OTG_CORE_HANDLE  *pdev,
       break;
       
     default:
+    	 printf("USB_DESC_TYPE_STRING: (req->wValue)=%d, call USBD_CtlError\r\n",(req->wValue));
 #ifdef USB_SUPPORT_USER_STRING_DESC
       pbuf = pdev->dev.class_cb->GetUsrStrDescriptor(pdev->cfg.speed, (req->wValue) , &len);
       break;
