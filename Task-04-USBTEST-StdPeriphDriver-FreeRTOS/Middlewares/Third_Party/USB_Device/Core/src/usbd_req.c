@@ -141,7 +141,7 @@ static uint8_t USBD_GetLen(uint8_t *buf);
 USBD_Status  USBD_StdDevReq (USB_OTG_CORE_HANDLE  *pdev, USB_SETUP_REQ  *req)
 {
   USBD_Status ret = USBD_OK;  
-  printf("USBD_StdDevReq: req->bRequest=0x%x\r\n",req->bRequest);
+  //printf("USBD_StdDevReq: req->bRequest=0x%x\r\n",req->bRequest);
   switch (req->bRequest) 
   {
   case USB_REQ_GET_DESCRIPTOR: 
@@ -192,7 +192,7 @@ USBD_Status  USBD_StdDevReq (USB_OTG_CORE_HANDLE  *pdev, USB_SETUP_REQ  *req)
 USBD_Status  USBD_StdItfReq (USB_OTG_CORE_HANDLE  *pdev, USB_SETUP_REQ  *req)
 {
   USBD_Status ret = USBD_OK; 
-  printf("USBD_StdItfReq: pdev->dev.device_status=%d\r\n",pdev->dev.device_status);
+  //printf("USBD_StdItfReq: pdev->dev.device_status=%d\r\n",pdev->dev.device_status);
   switch (pdev->dev.device_status) 
   {
   case USB_OTG_CONFIGURED:
@@ -361,7 +361,7 @@ static void USBD_GetDescriptor(USB_OTG_CORE_HANDLE  *pdev,
 {
   uint16_t len;
   uint8_t *pbuf;
-  printf("USBD_GetDescriptor: (req->wValue >> 8)=%d\r\n",req->wValue >> 8);
+  //printf("USBD_GetDescriptor: (req->wValue >> 8)=%d\r\n",req->wValue >> 8);
   switch (req->wValue >> 8)
   {
   case USB_DESC_TYPE_DEVICE:
@@ -386,7 +386,7 @@ static void USBD_GetDescriptor(USB_OTG_CORE_HANDLE  *pdev,
     break;
     
   case USB_DESC_TYPE_STRING:
-		 printf("USB_DESC_TYPE_STRING: (req->wValue)=%d\r\n",(uint8_t)(req->wValue));
+		 //printf("USB_DESC_TYPE_STRING: (req->wValue)=%d\r\n",(uint8_t)(req->wValue));
     switch ((uint8_t)(req->wValue))
     {
     case USBD_IDX_LANGID_STR:
@@ -509,7 +509,7 @@ static void USBD_SetAddress(USB_OTG_CORE_HANDLE  *pdev,
     else 
     {
       pdev->dev.device_address = dev_addr;
-      printf("USBD_SetAddress: call DCD_EP_SetAddress, dev_addr=%d\r\n",dev_addr);
+      //printf("USBD_SetAddress: call DCD_EP_SetAddress, dev_addr=%d\r\n",dev_addr);
       DCD_EP_SetAddress(pdev, dev_addr);               
       USBD_CtlSendStatus(pdev);                         
       

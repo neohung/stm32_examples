@@ -205,6 +205,7 @@ static uint8_t USBD_SetupStage(USB_OTG_CORE_HANDLE *pdev)
 */
 static uint8_t USBD_DataOutStage(USB_OTG_CORE_HANDLE *pdev , uint8_t epnum)
 {
+  //printf("USBD_DataOutStage, EP%d\r\n",epnum);
   USB_OTG_EP *ep;
   
   if(epnum == 0) 

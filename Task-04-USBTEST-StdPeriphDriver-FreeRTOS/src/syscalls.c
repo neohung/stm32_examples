@@ -48,35 +48,32 @@ caddr_t _sbrk_r (struct _reent *r, int incr) {
 	return (caddr_t) prev_heap_end;
 }
 
+extern uint16_t VCP_DataTx(uint8_t* Buf, uint32_t Len);
+extern void VCP_put_char(uint8_t buf);
 //Here to implement printf
 #include <unistd.h> //FOR STDOUT_FILENO, STDERR_FILENO
 int _write(int file, char *ptr, int len) {
 	//VCP_send_buffer((uint8_t*)ptr, len);
 	if (file == STDOUT_FILENO || file == STDERR_FILENO){
 	  int i = 0;
-	  while(i<len)
-	    ITM_SendChar(ptr[i++]);
+	  while(i<len){
+		  ITM_SendChar(ptr[i++]);
+	  }
 	}
 	return len;
 }
 
-int _read(int file, char *ptr, int len) {
-	return len;
-}
 
 //Here to implement scanf
-/*
+extern int VCP_get_char(uint8_t *buf);
 int _read(int file, char *ptr, int len) {
 	if (file != 0) {
 		return 0;
 	}
-
 	// Use USB CDC Port for stdin
 	while(!VCP_get_char((uint8_t*)ptr)){};
-
 	// Echo typed characters
 	VCP_put_char((uint8_t)*ptr);
-
 	return 1;
 }
-*/
+

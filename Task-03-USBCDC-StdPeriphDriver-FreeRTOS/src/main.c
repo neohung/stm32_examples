@@ -52,10 +52,9 @@ static void Thread2(void const *arg)
 	  while(1)
 	 {
 	   GPIO_SetBits(GPIOD, GPIO_Pin_13);
-	   osDelay(250);
-	   printf("A");
+	   osDelay(500);
 	   GPIO_ResetBits(GPIOD, GPIO_Pin_13);
-	   osDelay(250);
+	   osDelay(500);
 	 }
 
 }
@@ -66,10 +65,12 @@ static void Thread3(void const *arg)
 	  while(1)
 	 {
 		  GPIO_SetBits(GPIOD, GPIO_Pin_12);
-		  osDelay(500);
-		  //printf("B");
+		  osDelay(8);
+		  char input;
+		  scanf("%c",&input);
+		  printf("You press '%c' key\r\n",input);
 		  GPIO_ResetBits(GPIOD, GPIO_Pin_12);
-		  osDelay(500);
+		  osDelay(8);
 	 }
 
 }

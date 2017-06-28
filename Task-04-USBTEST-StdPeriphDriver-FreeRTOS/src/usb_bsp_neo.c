@@ -246,7 +246,7 @@ void USB_OTG_BSP_TimerIRQ (void)
 
 void USBD_USR_Init(void)
 {
-  printf("USBD_USR_Init\r\n");
+  //printf("USBD_USR_Init\r\n");
 }
 
 void USBD_USR_DeviceReset(uint8_t speed )
@@ -257,7 +257,7 @@ void USBD_USR_DeviceReset(uint8_t speed )
      break;
 
   case USB_OTG_SPEED_FULL:
-	  printf("USBD_USR_DeviceReset FULL\r\n");
+	  //printf("USBD_USR_DeviceReset FULL\r\n");
      break;
  default:
      break;
@@ -267,12 +267,12 @@ void USBD_USR_DeviceReset(uint8_t speed )
 
 void USBD_USR_DeviceSuspended(void)
 {
-	printf("USBD_USR_DeviceSuspended\r\n");
+	//printf("USBD_USR_DeviceSuspended\r\n");
 }
 
 void USBD_USR_DeviceResumed(void)
 {
-	printf("USBD_USR_DeviceResumed\r\n");
+	//printf("USBD_USR_DeviceResumed\r\n");
 }
 
 #define USB_SIZ_DEVICE_DESC                     18
@@ -308,7 +308,7 @@ __ALIGN_BEGIN uint8_t USBD_DeviceDesc[USB_SIZ_DEVICE_DESC] __ALIGN_END =
 
 uint8_t *  USBD_USR_DeviceDescriptor( uint8_t speed , uint16_t *length)
 {
-	printf("USBD_USR_DeviceDescriptor\r\n");
+	//printf("USBD_USR_DeviceDescriptor\r\n");
   *length = sizeof(USBD_DeviceDesc);
   return USBD_DeviceDesc;
 }
@@ -414,7 +414,7 @@ __ALIGN_BEGIN uint8_t usbd_neo_CfgDesc[USB_CDC_CONFIG_DESC_SIZ]  __ALIGN_END =
 uint8_t *  USBD_USR_ConfigStrDescriptor( uint8_t speed , uint16_t *length)
 {
 
-	 printf("USBD_USR_ConfigStrDescriptor\r\n");
+	// printf("USBD_USR_ConfigStrDescriptor\r\n");
 	/*
   if(speed  == USB_OTG_SPEED_HIGH)
   {
@@ -440,18 +440,15 @@ __ALIGN_BEGIN uint8_t USBD_LangIDDesc[USB_SIZ_STRING_LANGID] __ALIGN_END =
 
 uint8_t *  USBD_USR_LangIDStrDescriptor( uint8_t speed , uint16_t *length)
 {
-	printf("USBD_USR_LangIDStrDescriptor\r\n");
+	//printf("USBD_USR_LangIDStrDescriptor\r\n");
   *length =  sizeof(USBD_LangIDDesc);
   return USBD_LangIDDesc;
 }
 
-#define USBD_MANUFACTURER_STRING        "STMicroelectronics"
+#define USBD_MANUFACTURER_STRING        "Neo STMicroelectronics"
 
-#define USBD_PRODUCT_FS_STRING          "STM32 Virtual ComPort in FS Mode"
+#define USBD_PRODUCT_FS_STRING          "Neo STM32 Virtual ComPort in FS Mode"
 #define USBD_SERIALNUMBER_FS_STRING     "00000000050C"
-
-#define USBD_CONFIGURATION_HS_STRING    "VCP Config"
-#define USBD_INTERFACE_HS_STRING        "VCP Interface"
 
 #define USBD_CONFIGURATION_FS_STRING    "VCP Config"
 #define USBD_INTERFACE_FS_STRING        "VCP Interface"
@@ -460,28 +457,28 @@ extern uint8_t USBD_StrDesc[USB_MAX_STR_DESC_SIZ];
 
 uint8_t *  USBD_USR_ProductStrDescriptor( uint8_t speed , uint16_t *length)
 {
-	printf("USBD_USR_ProductStrDescriptor\r\n");
+	//printf("USBD_USR_ProductStrDescriptor\r\n");
     USBD_GetString ((uint8_t*)USBD_PRODUCT_FS_STRING, USBD_StrDesc, length);
   return USBD_StrDesc;
 }
 
 uint8_t *  USBD_USR_SerialStrDescriptor( uint8_t speed , uint16_t *length)
 {
-	printf("USBD_USR_SerialStrDescriptor\r\n");
+	//printf("USBD_USR_SerialStrDescriptor\r\n");
     USBD_GetString ((uint8_t*)USBD_SERIALNUMBER_FS_STRING, USBD_StrDesc, length);
   return USBD_StrDesc;
 }
 
 uint8_t *  USBD_USR_InterfaceStrDescriptor( uint8_t speed , uint16_t *length)
 {
-	printf("USBD_USR_InterfaceStrDescriptor\r\n");
+	//printf("USBD_USR_InterfaceStrDescriptor\r\n");
     USBD_GetString ((uint8_t*)USBD_INTERFACE_FS_STRING, USBD_StrDesc, length);
   return USBD_StrDesc;
 }
 
 uint8_t *  USBD_USR_ManufacturerStrDescriptor( uint8_t speed , uint16_t *length)
 {
-	printf("USBD_USR_ManufacturerStrDescriptor\r\n");
+	//printf("USBD_USR_ManufacturerStrDescriptor\r\n");
   USBD_GetString ((uint8_t*)USBD_MANUFACTURER_STRING, USBD_StrDesc, length);
   return USBD_StrDesc;
 }
@@ -497,19 +494,47 @@ USBD_DEVICE USR_desc =
   USBD_USR_InterfaceStrDescriptor,
 };
 
+
+#define CDC_DATA_IN_PACKET_SIZE                 *(uint16_t *)(((USB_OTG_CORE_HANDLE *)pdev)->dev.pConfig_descriptor + 57)
+#define CDC_DATA_OUT_PACKET_SIZE                *(uint16_t *)(((USB_OTG_CORE_HANDLE *)pdev)->dev.pConfig_descriptor + 64)
+#define USB_OTG_EP_CONTROL                       0
+#define USB_OTG_EP_ISOC                          1
+#define USB_OTG_EP_BULK                          2
+#define USB_OTG_EP_INT                           3
+__ALIGN_BEGIN uint8_t USB_Rx_Buffer   [CDC_DATA_MAX_PACKET_SIZE] __ALIGN_END ;
+#include "usb_dcd.h"
 static uint8_t  usbd_neo_Init (void  *pdev,
                                uint8_t cfgidx)
 {
-	printf("--------------------\r\n");
-	printf("usbd_neo_Init\r\n");
-	printf("--------------------\r\n");
+	//printf("--------------------\r\n");
+	//printf("usbd_neo_Init\r\n");
+	//printf("--------------------\r\n");
+
+	DCD_EP_Open(pdev,
+	              CDC_IN_EP,
+	              CDC_DATA_IN_PACKET_SIZE,
+	              USB_OTG_EP_BULK);
+	  DCD_EP_Open(pdev,
+	              CDC_OUT_EP,
+	              CDC_DATA_OUT_PACKET_SIZE,
+	              USB_OTG_EP_BULK);
+	  DCD_EP_Open(pdev,
+	              CDC_CMD_EP,
+	              CDC_CMD_PACKET_SZE,
+	              USB_OTG_EP_INT);
+	 //APP_FOPS.pIf_Init();
+	 DCD_EP_PrepareRx(pdev,
+	                   CDC_OUT_EP,
+	                   (uint8_t*)(USB_Rx_Buffer),
+	                   CDC_DATA_OUT_PACKET_SIZE);
+
 }
 
 static uint8_t  *USBD_neo_GetCfgDesc (uint8_t speed, uint16_t *length)
 {
-	printf("--------------------\r\n");
-  printf("USBD_neo_GetCfgDesc\r\n");
-	printf("--------------------\r\n");
+//	printf("--------------------\r\n");
+//  printf("USBD_neo_GetCfgDesc\r\n");
+//	printf("--------------------\r\n");
 
   *length = sizeof (usbd_neo_CfgDesc);
   return usbd_neo_CfgDesc;
@@ -534,7 +559,7 @@ CDC_IF_Prop_TypeDef;
 static uint16_t VCP_Init(void);
 static uint16_t VCP_DeInit(void);
 static uint16_t VCP_Ctrl(uint32_t Cmd, uint8_t* Buf, uint32_t Len);
-static uint16_t VCP_DataTx(uint8_t* Buf, uint32_t Len);
+uint16_t VCP_DataTx(uint8_t* Buf, uint32_t Len);
 static uint16_t VCP_DataRx(uint8_t* Buf, uint32_t Len);
 CDC_IF_Prop_TypeDef VCP_fops = { VCP_Init, VCP_DeInit, VCP_Ctrl, VCP_DataTx, VCP_DataRx };
 #define APP_FOPS                        VCP_fops
@@ -545,9 +570,9 @@ static uint32_t cdcCmd = 0xFF;
 static uint32_t cdcLen = 0;
 static uint8_t  usbd_neo_Setup (void  *pdev,USB_SETUP_REQ *req)
 {
-	printf("--------------------\r\n");
-	printf("usbd_neo_Setup, (req->bmRequest & USB_REQ_TYPE_MASK)=%d\r\n",(req->bmRequest & USB_REQ_TYPE_MASK));
-	printf("--------------------\r\n");
+	//printf("--------------------\r\n");
+	//printf("usbd_neo_Setup, (req->bmRequest & USB_REQ_TYPE_MASK)=%d\r\n",(req->bmRequest & USB_REQ_TYPE_MASK));
+	//printf("--------------------\r\n");
 	 uint16_t len;
 	  uint8_t  *pbuf;
 	  switch (req->bmRequest & USB_REQ_TYPE_MASK)
@@ -557,15 +582,15 @@ static uint8_t  usbd_neo_Setup (void  *pdev,USB_SETUP_REQ *req)
 	 	  {
 	 		 if (req->wLength)
 	 		 {
-	 		  printf("Check if the request is a data setup packet\r\n");
+	 		 // printf("Check if the request is a data setup packet\r\n");
 	 		    /* Check if the request is Host-to-Device requeset */
              //----------------
 	 		   if (req->bmRequest & 0x80){
-	 		 	  printf("request is Host-to-Device requeset, call VCP_Ctrl()\r\n");
+	 		 	  //printf("request is Host-to-Device requeset, call VCP_Ctrl()\r\n");
 	 		 	  APP_FOPS.pIf_Ctrl(req->bRequest, CmdBuff, req->wLength);
 	 		 	  USBD_CtlSendData (pdev, CmdBuff, req->wLength);
 	 		   }else{  /* Device-to-Host requeset */
-	 		 	 printf("request is Device-to-Host\r\n");
+	 		 	// printf("request is Device-to-Host\r\n");
 	 		     cdcCmd = req->bRequest;
 	 		 	 cdcLen = req->wLength;
 	 	         USBD_CtlPrepareRx (pdev,CmdBuff,req->wLength);
@@ -573,7 +598,7 @@ static uint8_t  usbd_neo_Setup (void  *pdev,USB_SETUP_REQ *req)
 	 		 //----------------
 	 	     }else{
 	 			 /* No Data request */
-	 			 printf("No Data request, CALL VCP_Ctrl\r\n");
+	 			 //printf("No Data request, CALL VCP_Ctrl\r\n");
 	 			 APP_FOPS.pIf_Ctrl(req->bRequest, NULL, 0);
 	 	     }
 	 	   }
@@ -590,37 +615,138 @@ static uint8_t  usbd_neo_Setup (void  *pdev,USB_SETUP_REQ *req)
 
 static uint8_t  usbd_neo_EP0_RxReady (void  *pdev)
 {
-	printf("--------------------\r\n");
-	printf("usbd_neo_EP0_RxReady\r\n");
-	printf("--------------------\r\n");
+	//printf("--------------------\r\n");
+	//printf("usbd_neo_EP0_RxReady\r\n");
+	//printf("--------------------\r\n");
 }
+
+
+static uint8_t  usbd_neo_DataOut (void *pdev, uint8_t epnum)
+{
+	//printf("--------------------\r\n");
+	//	printf("usbd_neo_DataOut\r\n");
+	//	printf("--------------------\r\n");
+		uint16_t USB_Rx_Cnt;
+		  USB_Rx_Cnt = ((USB_OTG_CORE_HANDLE*)pdev)->dev.out_ep[epnum].xfer_count;
+		  //Call VCP_DataRx()
+		  APP_FOPS.pIf_DataRx(USB_Rx_Buffer, USB_Rx_Cnt);
+		  DCD_EP_PrepareRx(pdev,
+		                   CDC_OUT_EP,
+		                   (uint8_t*)(USB_Rx_Buffer),
+		                   CDC_DATA_OUT_PACKET_SIZE);
+		  return USBD_OK;
+}
+
+__ALIGN_BEGIN uint8_t APP_Rx_Buffer   [APP_RX_DATA_SIZE] __ALIGN_END ;
+uint32_t APP_Rx_ptr_in  = 0; //HEAD
+uint32_t APP_Rx_ptr_out = 0; //TAIL
+uint32_t APP_Rx_length  = 0;
+
+uint8_t  USB_Tx_State = 0;
 
 static uint8_t  usbd_neo_DataIn (void *pdev, uint8_t epnum)
 {
 	printf("--------------------\r\n");
-	printf("usbd_neo_DataIn\r\n");
-	printf("--------------------\r\n");
+		printf("usbd_neo_DataIn\r\n");
+		printf("--------------------\r\n");
+		 uint16_t USB_Tx_ptr;
+		  uint16_t USB_Tx_length;
+
+		  if (USB_Tx_State == 1)
+		  {
+		    if (APP_Rx_length == 0)
+		    {
+		    	//Reset USB_Tx_State to 0
+		      USB_Tx_State = 0;
+		    }
+		    else
+		    {
+		      if (APP_Rx_length > CDC_DATA_IN_PACKET_SIZE){
+		        USB_Tx_ptr = APP_Rx_ptr_out;
+		        USB_Tx_length = CDC_DATA_IN_PACKET_SIZE;
+
+		        APP_Rx_ptr_out += CDC_DATA_IN_PACKET_SIZE;
+		        APP_Rx_length -= CDC_DATA_IN_PACKET_SIZE;
+		      }
+		      else
+		      {
+		        USB_Tx_ptr = APP_Rx_ptr_out;
+		        USB_Tx_length = APP_Rx_length;
+
+		        APP_Rx_ptr_out += APP_Rx_length;
+		        APP_Rx_length = 0;
+		      }
+
+		      /* Prepare the available data buffer to be sent on IN endpoint */
+		      DCD_EP_Tx (pdev,
+		                 CDC_IN_EP,
+		                 (uint8_t*)&APP_Rx_Buffer[USB_Tx_ptr],
+		                 USB_Tx_length);
+		    }
+		  }
+
+		  return USBD_OK;
+
+
 }
 
-static uint8_t  usbd_neo_DataOut (void *pdev, uint8_t epnum)
+
+static void Handle_USBAsynchXfer (void *pdev)
 {
-	printf("--------------------\r\n");
-		printf("usbd_neo_DataOut\r\n");
-		printf("--------------------\r\n");
+  uint16_t USB_Tx_ptr;
+  uint16_t USB_Tx_length;
+  //printf("Handle_USBAsynchXfer USB_Tx_State=%d[%d/%d]\r\n",USB_Tx_State,APP_Rx_ptr_out,APP_Rx_ptr_in);
+  if(USB_Tx_State != 1){
+    if (APP_Rx_ptr_out == APP_RX_DATA_SIZE){
+      APP_Rx_ptr_out = 0;
+    }
+
+    if(APP_Rx_ptr_out == APP_Rx_ptr_in){
+      USB_Tx_State = 0;
+      return;
+    }
+
+    if(APP_Rx_ptr_out > APP_Rx_ptr_in) /* rollback */{
+      APP_Rx_length = APP_RX_DATA_SIZE - APP_Rx_ptr_out;
+    }
+    else{
+      APP_Rx_length = APP_Rx_ptr_in - APP_Rx_ptr_out;
+    }
+    if (APP_Rx_length > CDC_DATA_IN_PACKET_SIZE){
+      USB_Tx_ptr = APP_Rx_ptr_out;
+      USB_Tx_length = CDC_DATA_IN_PACKET_SIZE;
+      APP_Rx_ptr_out += CDC_DATA_IN_PACKET_SIZE;
+      APP_Rx_length -= CDC_DATA_IN_PACKET_SIZE;
+    }
+    else{
+      USB_Tx_ptr = APP_Rx_ptr_out;
+      USB_Tx_length = APP_Rx_length;
+      APP_Rx_ptr_out += APP_Rx_length;
+      APP_Rx_length = 0;
+    }
+    USB_Tx_State = 1;
+    //printf("Handle_USBAsynchXfer send DCD_EP_Tx\r\n");
+    DCD_EP_Tx (pdev,
+               CDC_IN_EP,
+               (uint8_t*)&APP_Rx_Buffer[USB_Tx_ptr],
+               USB_Tx_length);
+  }
+
 }
+
 
 static uint8_t  usbd_neo_SOF (void *pdev)
 {
-//	printf("--------------------\r\n");
-//		printf("usbd_neo_SOF\r\n");
-//		printf("--------------------\r\n");
+	//printf("--------------------\r\n");
+	//	printf("usbd_neo_SOF\r\n");
+		//printf("--------------------\r\n");
 		static uint32_t FrameCount = 0;
 		  if (FrameCount++ == CDC_IN_FRAME_INTERVAL)
 		  {
 		    /* Reset the frame counter */
 		    FrameCount = 0;
 		    /* Check the data to be sent through IN pipe */
-		    //Handle_USBAsynchXfer(pdev);
+		    Handle_USBAsynchXfer(pdev);
 		  }
 		  return USBD_OK;
 }
@@ -628,11 +754,11 @@ static uint8_t  usbd_neo_SOF (void *pdev)
 
 static uint16_t VCP_Init(void)
 {
-	printf("VCP_Init\r\n");
+	//printf("VCP_Init\r\n");
 }
 static uint16_t VCP_DeInit(void)
 {
-	printf("VCP_DeInit\r\n");
+	//printf("VCP_DeInit\r\n");
 }
 
 #define SEND_ENCAPSULATED_COMMAND               0x00
@@ -663,7 +789,7 @@ LINE_CODING linecoding = {
 
 
 static uint16_t VCP_Ctrl(uint32_t Cmd, uint8_t* Buf, uint32_t Len) {
-	printf("VCP_Ctrl: cmd=0x%x\r\n",Cmd);
+	//printf("VCP_Ctrl: cmd=0x%x\r\n",Cmd);
 	switch (Cmd) {
 	case SEND_ENCAPSULATED_COMMAND:
 		/* Not  needed for this driver */
@@ -714,13 +840,64 @@ static uint16_t VCP_Ctrl(uint32_t Cmd, uint8_t* Buf, uint32_t Len) {
 	return USBD_OK;
 }
 
-static uint16_t VCP_DataTx(uint8_t* Buf, uint32_t Len)
+uint16_t VCP_DataTx(uint8_t* Buf, uint32_t Len)
 {
-	printf("VCP_DataTx\r\n");
+	//printf("VCP_DataTx\r\n");
+	uint32_t i = 0;
+		while (i < Len) {
+			APP_Rx_Buffer[APP_Rx_ptr_in] = *(Buf + i);
+			APP_Rx_ptr_in++;
+			i++;
+			/* To avoid buffer overflow */
+			if (APP_Rx_ptr_in == APP_RX_DATA_SIZE) {
+				APP_Rx_ptr_in = 0;
+			}
+		}
+
+		return USBD_OK;
 }
+
+void VCP_put_char(uint8_t buf) {
+	VCP_DataTx(&buf, 1);
+}
+
+#define APP_TX_BUF_SIZE 128
+uint8_t APP_Tx_Buffer[APP_TX_BUF_SIZE];
+uint32_t APP_tx_ptr_head;
+uint32_t APP_tx_ptr_tail;
+
 static uint16_t VCP_DataRx(uint8_t* Buf, uint32_t Len)
 {
-	printf("VCP_DataRx\r\n");
+	//printf("VCP_DataRx\r\n");
+	uint32_t i;
+
+		for (i = 0; i < Len; i++) {
+			APP_Tx_Buffer[APP_tx_ptr_head] = *(Buf + i);
+			//printf("VCP_DataRx: Got data %c\r\n", *(Buf + i));
+			//Read data into buffer HEAD++,
+			APP_tx_ptr_head++;
+
+			if (APP_tx_ptr_head == APP_TX_BUF_SIZE)
+				APP_tx_ptr_head = 0;
+
+			if (APP_tx_ptr_head == APP_tx_ptr_tail)
+				return USBD_FAIL;
+		}
+
+		return USBD_OK;
+}
+
+int VCP_get_char(uint8_t *buf) {
+	if (APP_tx_ptr_head == APP_tx_ptr_tail)
+		return 0;
+
+	*buf = APP_Tx_Buffer[APP_tx_ptr_tail];
+	printf("VCP_get_char: '%c'\r\n",*buf);
+	APP_tx_ptr_tail++;
+	if (APP_tx_ptr_tail == APP_TX_BUF_SIZE)
+		APP_tx_ptr_tail = 0;
+
+	return 1;
 }
 
 static uint8_t  usbd_neo_DeInit (void  *pdev, uint8_t cfgidx)

@@ -261,6 +261,7 @@ uint32_t USBD_OTG_ISR_Handler (USB_OTG_CORE_HANDLE *pdev)
     }
     if (gintr_status.b.sofintr)
     {
+      //printf("Call DCD_HandleSof_ISR\r\n");
       retval |= DCD_HandleSof_ISR(pdev);
       
     }
@@ -434,6 +435,7 @@ static uint32_t DCD_HandleUSBSuspend_ISR(USB_OTG_CORE_HANDLE *pdev)
 */
 static uint32_t DCD_HandleInEP_ISR(USB_OTG_CORE_HANDLE *pdev)
 {
+  printf("DCD_HandleInEP_ISR\r\n");
   USB_OTG_DIEPINTn_TypeDef  diepint;
   
   uint32_t ep_intr;
@@ -453,7 +455,7 @@ static uint32_t DCD_HandleInEP_ISR(USB_OTG_CORE_HANDLE *pdev)
         USB_OTG_MODIFY_REG32(&pdev->regs.DREGS->DIEPEMPMSK, fifoemptymsk, 0);
         CLEAR_IN_EP_INTR(epnum, xfercompl);
         /* TX COMPLETE */
-        printf("DCD_HandleInEP_ISR: TX COMPLETE call USBD_DataInStage\r\n");
+        //printf("DCD_HandleInEP_ISR: TX COMPLETE call USBD_DataInStage\r\n");
         USBD_DCD_INT_fops->DataInStage(pdev , epnum);
         
         if (pdev->cfg.dma_enable == 1)
@@ -524,7 +526,7 @@ static uint32_t DCD_HandleOutEP_ISR(USB_OTG_CORE_HANDLE *pdev)
   
   while ( ep_intr )
   {
-	  printf("DCD_HandleOutEP_ISR: epnum:%d, (ep_intr&0x1)=%d\r\n",epnum,(ep_intr&0x1));
+	  //printf("DCD_HandleOutEP_ISR: epnum:%d, (ep_intr&0x1)=%d\r\n",epnum,(ep_intr&0x1));
     if (ep_intr&0x1)
     {
       doepint.d32 = USB_OTG_ReadDevOutEP_itr(pdev, epnum);
@@ -543,7 +545,7 @@ static uint32_t DCD_HandleOutEP_ISR(USB_OTG_CORE_HANDLE *pdev)
         }
         /* Inform upper layer: data ready */
         /* RX COMPLETE */
-        printf("DCD_HandleOutEP_ISR: epnum:%d, call USBD_DataOutStage\r\n",epnum);
+        //printf("DCD_HandleOutEP_ISR: epnum:%d, call USBD_DataOutStage\r\n",epnum);
         USBD_DCD_INT_fops->DataOutStage(pdev , epnum);
         
         if (pdev->cfg.dma_enable == 1)
@@ -572,7 +574,7 @@ static uint32_t DCD_HandleOutEP_ISR(USB_OTG_CORE_HANDLE *pdev)
         
         /* inform the upper layer that a setup packet is available */
         /* SETUP COMPLETE */
-    	printf("DCD_HandleOutEP_ISR: call USBD_SetupStage\r\n");
+    	//printf("DCD_HandleOutEP_ISR: call USBD_SetupStage\r\n");
         USBD_DCD_INT_fops->SetupStage(pdev);
         CLEAR_OUT_EP_INTR(epnum, setup);
       }

@@ -54,12 +54,24 @@ int _write(int file, char *ptr, int len) {
 	return len;
 }
 
+/*
+#include <unistd.h> //FOR STDOUT_FILENO, STDERR_FILENO
+int _write(int file, char *ptr, int len) {
+       if (file == STDOUT_FILENO || file == STDERR_FILENO){
+         int i = 0;
+         while(i<len)
+           ITM_SendChar(ptr[i++]);
+       }
+       return len;
+}
+*/
+/*
 int _read(int file, char *ptr, int len) {
 	return len;
 }
+*/
 
 //Here to implement scanf
-/*
 int _read(int file, char *ptr, int len) {
 	if (file != 0) {
 		return 0;
@@ -69,8 +81,8 @@ int _read(int file, char *ptr, int len) {
 	while(!VCP_get_char((uint8_t*)ptr)){};
 
 	// Echo typed characters
-	VCP_put_char((uint8_t)*ptr);
+	//VCP_put_char((uint8_t)*ptr);
 
 	return 1;
 }
-*/
+

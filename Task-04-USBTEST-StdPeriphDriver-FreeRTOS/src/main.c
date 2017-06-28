@@ -53,13 +53,18 @@ static void Thread2(void const *arg)
 	  while(1)
 	 {
 	   GPIO_SetBits(GPIOD, GPIO_Pin_13);
-	   osDelay(250);
+	   osDelay(8);
+	   //VCP_put_char('A');
 	   //printf("A");
+	   uint8_t key;
+	   scanf("%c,",&key);
 	   GPIO_ResetBits(GPIOD, GPIO_Pin_13);
-	   osDelay(250);
+	   osDelay(8);
 	 }
 
 }
+
+
 
 volatile osThreadId thread3_id = NULL;
 static void Thread3(void const *arg)
@@ -100,7 +105,7 @@ static void mainThread(void const *arg)
 
 int main(void) {
 	init();
-    printf("init\r\n");
+    //printf("init\r\n");
 	/*
 	 * Disable STDOUT buffering. Otherwise nothing will be printed
 	 * before a newline character or when the buffer is flushed.
