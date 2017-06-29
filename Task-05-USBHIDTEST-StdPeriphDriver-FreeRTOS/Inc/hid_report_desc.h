@@ -2,6 +2,28 @@
 #define __HIDREPORTDESC_H__
 #include "usb_conf.h"
 //#define HID_MOUSE_REPORT_DESC_SIZE    74
+//======================================(7) Start =======================================
+typedef enum {
+	USB_HIDDEVICE_Button_Released = 0x00, /*!< Button is not pressed */
+	USB_HIDDEVICE_Button_Pressed = 0x01   /*!< Button is pressed */
+} USB_HIDDEVICE_Button_t;
+
+typedef struct {
+	USB_HIDDEVICE_Button_t L_CTRL;  /*!< Left CTRL button. This parameter can be a value of @ref TM_USB_HIDDEVICE_Button_t enumeration */
+	USB_HIDDEVICE_Button_t L_ALT;   /*!< Left ALT button. This parameter can be a value of @ref TM_USB_HIDDEVICE_Button_t enumeration */
+	USB_HIDDEVICE_Button_t L_SHIFT; /*!< Left SHIFT button. This parameter can be a value of @ref TM_USB_HIDDEVICE_Button_t enumeration */
+	USB_HIDDEVICE_Button_t L_GUI;   /*!< Left GUI (Win) button. This parameter can be a value of @ref TM_USB_HIDDEVICE_Button_t enumeration */
+	USB_HIDDEVICE_Button_t R_CTRL;  /*!< Right CTRL button. This parameter can be a value of @ref TM_USB_HIDDEVICE_Button_t enumeration */
+	USB_HIDDEVICE_Button_t R_ALT;   /*!< Right ALT button. This parameter can be a value of @ref TM_USB_HIDDEVICE_Button_t enumeration */
+	USB_HIDDEVICE_Button_t R_SHIFT; /*!< Right SHIFT button. This parameter can be a value of @ref TM_USB_HIDDEVICE_Button_t enumeration */
+	USB_HIDDEVICE_Button_t R_GUI;   /*!< Right GUI (Win) button. This parameter can be a value of @ref TM_USB_HIDDEVICE_Button_t enumeration */
+	uint8_t Key1;                      /*!< Key used with keyboard. This can be whatever. Like numbers, letters, everything. */
+	uint8_t Key2;                      /*!< Key used with keyboard. This can be whatever. Like numbers, letters, everything. */
+	uint8_t Key3;                      /*!< Key used with keyboard. This can be whatever. Like numbers, letters, everything. */
+	uint8_t Key4;                      /*!< Key used with keyboard. This can be whatever. Like numbers, letters, everything. */
+	uint8_t Key5;                      /*!< Key used with keyboard. This can be whatever. Like numbers, letters, everything. */
+	uint8_t Key6;                      /*!< Key used with keyboard. This can be whatever. Like numbers, letters, everything. */
+} USB_HIDDEVICE_Keyboard_t;
 
 __ALIGN_BEGIN static uint8_t HID_MOUSE_ReportDesc[74] __ALIGN_END =
 {
@@ -53,7 +75,7 @@ __ALIGN_BEGIN static uint8_t HID_MOUSE_ReportDesc[74] __ALIGN_END =
   0x01,   0xc0
 };
 
-
+//======================================(7) End =======================================
 /*
 __ALIGN_BEGIN static uint8_t HID_MOUSE_ReportDesc[74] __ALIGN_END =
 {

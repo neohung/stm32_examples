@@ -25,6 +25,8 @@
 #include "usbd_conf.h"
 #include "stm32f4xx_conf.h"
 #include "usbd_def.h"
+
+#include "usbd_core.h" // for USB_OTG_CONFIGURED, USBD_OK
 //======================================(1) Start =======================================
 void USB_OTG_BSP_Init(USB_OTG_CORE_HANDLE *pdev)
 {
@@ -330,11 +332,6 @@ static uint8_t  *USBD_HID_GetCfgDesc (uint8_t speed, uint16_t *length)
 extern uint32_t DCD_EP_Open(USB_OTG_CORE_HANDLE *pdev , uint8_t ep_addr,uint16_t ep_mps,uint8_t ep_type);
 extern uint32_t  DCD_EP_Flush (USB_OTG_CORE_HANDLE *pdev , uint8_t epnum);
 extern uint32_t DCD_EP_Close(USB_OTG_CORE_HANDLE *pdev , uint8_t  ep_addr);
-typedef enum {
-  USBD_OK   = 0,
-  USBD_BUSY,
-  USBD_FAIL,
-}USBD_Status;
 
 #define USB_OTG_EP_INT                           3
 static uint8_t  USBD_HID_Init (void  *pdev,
@@ -449,4 +446,15 @@ USBD_Class_cb_TypeDef  USBD_neo_cb =
   USBD_HID_GetCfgDesc,
 };
 
+
+uint8_t USBD_HID_SendReport     (USB_OTG_CORE_HANDLE  *pdev,
+                                 uint8_t *report,
+                                 uint16_t len)
+{
+  if (pdev->dev.device_status == USB_OTG_CONFIGURED )
+  {
+    DCD_EP_Tx (pdev, HID_IN_EP, report, len);
+  }
+  return USBD_OK;
+}
 //======================================(6) End =======================================

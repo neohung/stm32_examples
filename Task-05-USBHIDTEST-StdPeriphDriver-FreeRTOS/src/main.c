@@ -39,6 +39,96 @@ void init() {
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
 	GPIO_Init(GPIOD, &GPIO_InitStructure);
+
+	//-----------USER BTN (PA0)---------
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
+    // Clock for SYSCFG
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
+    // GPIOA initialization as an input from user button (GPIOA0)
+    GPIO_InitTypeDef GPIO_InitStruct;
+    GPIO_InitStruct.GPIO_Mode = GPIO_Mode_IN;
+    GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
+    GPIO_InitStruct.GPIO_Pin = GPIO_Pin_0;
+    GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_DOWN;
+    GPIO_InitStruct.GPIO_Speed = GPIO_Speed_2MHz;
+    GPIO_Init(GPIOA, &GPIO_InitStruct);
+    // Selects the GPIOA pin 0 used as external interrupt source
+    SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOA, EXTI_PinSource0);
+    // External interrupt settings
+    EXTI_InitTypeDef EXTI_InitStruct;
+    EXTI_InitStruct.EXTI_Line = EXTI_Line0;
+    EXTI_InitStruct.EXTI_LineCmd = ENABLE;
+    EXTI_InitStruct.EXTI_Mode = EXTI_Mode_Interrupt;
+    EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Rising;
+    EXTI_Init(&EXTI_InitStruct);
+    // Nested vectored interrupt settings
+    NVIC_InitTypeDef NVIC_InitStruct;
+    NVIC_InitStruct.NVIC_IRQChannel = EXTI0_IRQn;
+    NVIC_InitStruct.NVIC_IRQChannelCmd = ENABLE;
+    // EXTI0_IRQn has Most important interrupt
+    NVIC_InitStruct.NVIC_IRQChannelPreemptionPriority = 0x00;
+    NVIC_InitStruct.NVIC_IRQChannelSubPriority = 0x00;
+    NVIC_Init(&NVIC_InitStruct);
+}
+
+#include "hid_report_desc.h"
+extern uint8_t USBD_HID_SendReport     (USB_OTG_CORE_HANDLE  *pdev, uint8_t *report,uint16_t len);
+
+void EXTI0_IRQHandler(void)
+{
+	if (EXTI_GetITStatus(EXTI_Line0))
+	{
+		//
+		 USB_HIDDEVICE_Keyboard_t Keyboard;
+			   USB_HIDDEVICE_Keyboard_t* Keyboard_Data = &Keyboard;
+			   //
+				Keyboard_Data->L_CTRL = USB_HIDDEVICE_Button_Released;
+				Keyboard_Data->L_ALT = USB_HIDDEVICE_Button_Released;
+				Keyboard_Data->L_SHIFT = USB_HIDDEVICE_Button_Released;
+				Keyboard_Data->L_GUI = USB_HIDDEVICE_Button_Released;
+				Keyboard_Data->R_CTRL = USB_HIDDEVICE_Button_Released;
+				Keyboard_Data->R_ALT = USB_HIDDEVICE_Button_Released;
+				Keyboard_Data->R_SHIFT = USB_HIDDEVICE_Button_Released;
+				Keyboard_Data->R_GUI = USB_HIDDEVICE_Button_Released;
+				Keyboard_Data->Key1 = 0;
+				Keyboard_Data->Key2 = 0;
+				Keyboard_Data->Key3 = 0;
+				Keyboard_Data->Key4 = 0;
+				Keyboard_Data->Key5 = 0;
+				Keyboard_Data->Key6 = 0;
+			   //
+				Keyboard_Data->L_GUI = USB_HIDDEVICE_Button_Pressed;	/* Win button */
+				Keyboard_Data->Key1 = 0x15;
+			   //
+			   uint8_t buff[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};; /* 9 bytes long report */
+			   /* Report ID */
+			   	buff[0] = 0x01; /* Keyboard */
+			   	/* Control buttons */
+			   	buff[1] = 0;
+			   	buff[1] |= Keyboard_Data->L_CTRL 	<< 0;	/* Bit 0 */
+			   	buff[1] |= Keyboard_Data->L_SHIFT 	<< 1;	/* Bit 1 */
+			   	buff[1] |= Keyboard_Data->L_ALT 	<< 2;	/* Bit 2 */
+			   	buff[1] |= Keyboard_Data->L_GUI 	<< 3;	/* Bit 3 */
+			   	buff[1] |= Keyboard_Data->R_CTRL 	<< 4;	/* Bit 4 */
+			   	buff[1] |= Keyboard_Data->R_SHIFT 	<< 5;	/* Bit 5 */
+			   	buff[1] |= Keyboard_Data->R_ALT 	<< 6;	/* Bit 6 */
+			   	buff[1] |= Keyboard_Data->R_GUI 	<< 7;	/* Bit 7 */
+			   	/* Padding */
+			   	buff[2] = 0x00;
+			   	/* Keys */
+			   	buff[3] = Keyboard_Data->Key1;
+			   	buff[4] = Keyboard_Data->Key2;
+			   	buff[5] = Keyboard_Data->Key3;
+			   	buff[6] = Keyboard_Data->Key4;
+			   	buff[7] = Keyboard_Data->Key5;
+			   	buff[8] = Keyboard_Data->Key6;
+			   	/* Send to USB */
+			   	USBD_HID_SendReport(&USB_OTG_dev, buff, 9);
+		//
+		 GPIO_ToggleBits(GPIOD, GPIO_Pin_14);
+		 EXTI_ClearITPendingBit(EXTI_Line0);
+	}
+
 }
 
 volatile osThreadId thread2_id = NULL;
@@ -48,7 +138,7 @@ static void Thread2(void const *arg)
 	 {
 	   GPIO_SetBits(GPIOD, GPIO_Pin_13);
 	   osDelay(250);
-	   printf("Thread2\r\n");
+	   //printf("Thread2\r\n");
 	   GPIO_ResetBits(GPIOD, GPIO_Pin_13);
 	   osDelay(250);
 	 }
