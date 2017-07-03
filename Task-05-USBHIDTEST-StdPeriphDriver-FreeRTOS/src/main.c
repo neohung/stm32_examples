@@ -73,59 +73,24 @@ void init() {
 
 #include "hid_report_desc.h"
 extern uint8_t USBD_HID_SendReport     (USB_OTG_CORE_HANDLE  *pdev, uint8_t *report,uint16_t len);
+struct mediaHID_t mediaHID;
+struct keyboardHID_t keyboardHID;
+
+volatile int is_user_button_press = 0;
+void delay(int i)
+{
+	i*=1000;
+	do{
+	}while((i--)>0);
+}
 
 void EXTI0_IRQHandler(void)
 {
 	if (EXTI_GetITStatus(EXTI_Line0))
 	{
-		//
-		 USB_HIDDEVICE_Keyboard_t Keyboard;
-			   USB_HIDDEVICE_Keyboard_t* Keyboard_Data = &Keyboard;
-			   //
-				Keyboard_Data->L_CTRL = USB_HIDDEVICE_Button_Released;
-				Keyboard_Data->L_ALT = USB_HIDDEVICE_Button_Released;
-				Keyboard_Data->L_SHIFT = USB_HIDDEVICE_Button_Released;
-				Keyboard_Data->L_GUI = USB_HIDDEVICE_Button_Released;
-				Keyboard_Data->R_CTRL = USB_HIDDEVICE_Button_Released;
-				Keyboard_Data->R_ALT = USB_HIDDEVICE_Button_Released;
-				Keyboard_Data->R_SHIFT = USB_HIDDEVICE_Button_Released;
-				Keyboard_Data->R_GUI = USB_HIDDEVICE_Button_Released;
-				Keyboard_Data->Key1 = 0;
-				Keyboard_Data->Key2 = 0;
-				Keyboard_Data->Key3 = 0;
-				Keyboard_Data->Key4 = 0;
-				Keyboard_Data->Key5 = 0;
-				Keyboard_Data->Key6 = 0;
-			   //
-				Keyboard_Data->L_GUI = USB_HIDDEVICE_Button_Pressed;	/* Win button */
-				Keyboard_Data->Key1 = 0x15;
-			   //
-			   uint8_t buff[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};; /* 9 bytes long report */
-			   /* Report ID */
-			   	buff[0] = 0x01; /* Keyboard */
-			   	/* Control buttons */
-			   	buff[1] = 0;
-			   	buff[1] |= Keyboard_Data->L_CTRL 	<< 0;	/* Bit 0 */
-			   	buff[1] |= Keyboard_Data->L_SHIFT 	<< 1;	/* Bit 1 */
-			   	buff[1] |= Keyboard_Data->L_ALT 	<< 2;	/* Bit 2 */
-			   	buff[1] |= Keyboard_Data->L_GUI 	<< 3;	/* Bit 3 */
-			   	buff[1] |= Keyboard_Data->R_CTRL 	<< 4;	/* Bit 4 */
-			   	buff[1] |= Keyboard_Data->R_SHIFT 	<< 5;	/* Bit 5 */
-			   	buff[1] |= Keyboard_Data->R_ALT 	<< 6;	/* Bit 6 */
-			   	buff[1] |= Keyboard_Data->R_GUI 	<< 7;	/* Bit 7 */
-			   	/* Padding */
-			   	buff[2] = 0x00;
-			   	/* Keys */
-			   	buff[3] = Keyboard_Data->Key1;
-			   	buff[4] = Keyboard_Data->Key2;
-			   	buff[5] = Keyboard_Data->Key3;
-			   	buff[6] = Keyboard_Data->Key4;
-			   	buff[7] = Keyboard_Data->Key5;
-			   	buff[8] = Keyboard_Data->Key6;
-			   	/* Send to USB */
-			   	USBD_HID_SendReport(&USB_OTG_dev, buff, 9);
-		//
-		 GPIO_ToggleBits(GPIOD, GPIO_Pin_14);
+
+		is_user_button_press = 1;
+		GPIO_SetBits(GPIOD, GPIO_Pin_14);
 		 EXTI_ClearITPendingBit(EXTI_Line0);
 	}
 
@@ -136,24 +101,50 @@ static void Thread2(void const *arg)
 {
 	  while(1)
 	 {
-	   GPIO_SetBits(GPIOD, GPIO_Pin_13);
-	   osDelay(250);
+	   //GPIO_SetBits(GPIOD, GPIO_Pin_13);
+	   //osDelay(250);
 	   //printf("Thread2\r\n");
-	   GPIO_ResetBits(GPIOD, GPIO_Pin_13);
-	   osDelay(250);
-	 }
+		//
+		if (is_user_button_press){
+		  mediaHID.id = 2;
+		  mediaHID.keys = 0;
+		  keyboardHID.id = 1;
+		  keyboardHID.modifiers = 0;
+		  keyboardHID.key1 = 0;
+		  keyboardHID.key2 = 0;
+		  keyboardHID.key3 = 0;
 
+		  keyboardHID.modifiers = USB_HID_MODIFIER_LEFT_GUI;
+		  keyboardHID.key1 = USB_HID_KEY_R;
+		  USBD_HID_SendReport(&USB_OTG_dev, &keyboardHID, sizeof(struct keyboardHID_t));
+		  osDelay(30);
+		  //HAL_Delay(30);
+		  keyboardHID.modifiers = 0;
+		  keyboardHID.key1 = 0;
+		  USBD_HID_SendReport(&USB_OTG_dev, &keyboardHID, sizeof(struct keyboardHID_t));
+		  is_user_button_press = 0;
+
+		  GPIO_ResetBits(GPIOD, GPIO_Pin_14);
+		}
+		 osDelay(20);
+	  // GPIO_ResetBits(GPIOD, GPIO_Pin_13);
+	  // osDelay(250);
+	 }
 }
 
 volatile osThreadId thread3_id = NULL;
+extern __IO uint32_t uwTick;
 static void Thread3(void const *arg)
 {
+     printf("test\r\n");
 	  while(1)
 	 {
 		  GPIO_SetBits(GPIOD, GPIO_Pin_12);
 		  osDelay(500);
+		  //delay(5);
 		  //printf("B");
 		  GPIO_ResetBits(GPIOD, GPIO_Pin_12);
+		  //delay(5);
 		  osDelay(500);
 	 }
 
