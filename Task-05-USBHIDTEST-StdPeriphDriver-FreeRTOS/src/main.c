@@ -72,7 +72,7 @@ void init() {
 }
 
 #include "hid_report_desc.h"
-extern uint8_t USBD_HID_SendReport     (USB_OTG_CORE_HANDLE  *pdev, uint8_t *report,uint16_t len);
+extern uint8_t USBD_HID_SendReport(USB_OTG_CORE_HANDLE  *pdev, uint8_t *report,uint16_t len);
 struct mediaHID_t mediaHID;
 struct keyboardHID_t keyboardHID;
 
@@ -96,6 +96,22 @@ void EXTI0_IRQHandler(void)
 
 }
 
+void send_win_and_r_key(void)
+{
+			  keyboardHID.id = 1;
+			  keyboardHID.modifiers = 0;
+			  keyboardHID.key1 = 0;
+			  keyboardHID.key2 = 0;
+			  keyboardHID.key3 = 0;
+			  keyboardHID.modifiers = USB_HID_MODIFIER_LEFT_GUI;
+			  keyboardHID.key1 = USB_HID_KEY_R;
+			  USBD_HID_SendReport(&USB_OTG_dev, &keyboardHID, sizeof(struct keyboardHID_t));
+			  osDelay(30);
+			  keyboardHID.modifiers = 0;
+			  keyboardHID.key1 = 0;
+			  USBD_HID_SendReport(&USB_OTG_dev, &keyboardHID, sizeof(struct keyboardHID_t));
+}
+
 volatile osThreadId thread2_id = NULL;
 static void Thread2(void const *arg)
 {
@@ -106,23 +122,8 @@ static void Thread2(void const *arg)
 	   //printf("Thread2\r\n");
 		//
 		if (is_user_button_press){
-		  mediaHID.id = 2;
-		  mediaHID.keys = 0;
-		  keyboardHID.id = 1;
-		  keyboardHID.modifiers = 0;
-		  keyboardHID.key1 = 0;
-		  keyboardHID.key2 = 0;
-		  keyboardHID.key3 = 0;
-
-		  keyboardHID.modifiers = USB_HID_MODIFIER_LEFT_GUI;
-		  keyboardHID.key1 = USB_HID_KEY_R;
-		  USBD_HID_SendReport(&USB_OTG_dev, &keyboardHID, sizeof(struct keyboardHID_t));
-		  osDelay(30);
-		  //HAL_Delay(30);
-		  keyboardHID.modifiers = 0;
-		  keyboardHID.key1 = 0;
-		  USBD_HID_SendReport(&USB_OTG_dev, &keyboardHID, sizeof(struct keyboardHID_t));
-		  is_user_button_press = 0;
+			send_win_and_r_key();
+		 is_user_button_press = 0;
 
 		  GPIO_ResetBits(GPIOD, GPIO_Pin_14);
 		}
