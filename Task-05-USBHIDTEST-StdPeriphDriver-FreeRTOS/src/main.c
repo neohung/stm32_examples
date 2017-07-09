@@ -75,7 +75,7 @@ void init() {
 extern uint8_t USBD_HID_SendReport(USB_OTG_CORE_HANDLE  *pdev, uint8_t *report,uint16_t len);
 struct mediaHID_t mediaHID;
 struct keyboardHID_t keyboardHID;
-
+struct mouseHID_t mouseHID;
 volatile int is_user_button_press = 0;
 void delay(int i)
 {
@@ -112,6 +112,16 @@ void send_win_and_r_key(void)
 			  USBD_HID_SendReport(&USB_OTG_dev, &keyboardHID, sizeof(struct keyboardHID_t));
 }
 
+void send_mouse(void)
+{
+	//Move Mouse to Right Up
+	mouseHID.id = 1;
+	mouseHID.buttons = 0;
+	mouseHID.x = 10;
+	mouseHID.y = -10;
+	USBD_HID_SendReport(&USB_OTG_dev, &mouseHID, sizeof(struct mouseHID_t));
+}
+
 volatile osThreadId thread2_id = NULL;
 static void Thread2(void const *arg)
 {
@@ -122,7 +132,8 @@ static void Thread2(void const *arg)
 	   //printf("Thread2\r\n");
 		//
 		if (is_user_button_press){
-			send_win_and_r_key();
+			//send_win_and_r_key();
+			send_mouse();
 		 is_user_button_press = 0;
 
 		  GPIO_ResetBits(GPIOD, GPIO_Pin_14);

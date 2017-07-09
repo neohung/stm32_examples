@@ -180,8 +180,8 @@ __ALIGN_BEGIN uint8_t USBD_LangIDDesc[USB_SIZ_STRING_LANGID] __ALIGN_END =
 #define USB_SIZ_DEVICE_DESC                     18
 //0x01 means USB_DESC_TYPE_DEVICE
 #define USB_DEVICE_DESCRIPTOR_TYPE              0x01
-#define USBD_VID                     	0x0483
-#define USBD_PID                     	0x5710
+#define USBD_VID                     	0x0000
+#define USBD_PID                     	0x0000
 //#define USBD_CFG_MAX_NUM                1
 //#define USB_OTG_MAX_EP0_SIZE                 64
 __ALIGN_BEGIN uint8_t USBD_DeviceDesc[USB_SIZ_DEVICE_DESC] __ALIGN_END =
@@ -290,7 +290,7 @@ __ALIGN_BEGIN static uint8_t USBD_HID_CfgDesc[USB_HID_CONFIG_DESC_SIZ] __ALIGN_E
   0x01,         //bNumEndpoints: 1 EP
   0x03,         //bInterfaceClass: 0x03=HID
   0x01,   /*0x01*/      //bInterfaceSubClass : 1=BOOT, 0=no boot
-  0x01,   /*0x02*/      //nInterfaceProtocol : 0=none, 1=keyboard, 2=mouse
+  0x00,   /*0x02*/      //nInterfaceProtocol : 0=none, 1=keyboard, 2=mouse
   0,            //iInterface: Index of string descriptor
   /******************** HID Descriptor (Joystick Mouse) ********************/
   /* 18 */
