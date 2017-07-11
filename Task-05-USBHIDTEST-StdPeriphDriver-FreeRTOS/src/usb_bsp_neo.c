@@ -391,10 +391,19 @@ void send_descriptor(void  *pdev, USB_SETUP_REQ *req)
 }
 
 #define HID_REQ_SET_IDLE              0x0A
+#define HID_REQ_GET_REPORT            0x01
+
+
+extern void neo(void);
+void neo1(void)
+{
+
+}
 __ALIGN_BEGIN static uint32_t  USBD_HID_IdleState __ALIGN_END = 0;
 static uint8_t  USBD_HID_Setup (void  *pdev,
                                 USB_SETUP_REQ *req)
 {
+	// see HID1_11.pdf sect 7.2 and http://vusb.wikidot.com/driver-api
 	//0x20,then 0x00
 	  printf("USBD_HID_Setup (req->bmRequest & USB_REQ_TYPE_MASK):0x%x, req->bRequest:%d\r\n",(req->bmRequest & USB_REQ_TYPE_MASK),req->bRequest);
 	  switch (req->bmRequest & USB_REQ_TYPE_MASK)
@@ -402,6 +411,20 @@ static uint8_t  USBD_HID_Setup (void  *pdev,
 		  case USB_REQ_TYPE_CLASS :
 		    switch (req->bRequest)
 		    {
+		      case HID_REQ_GET_REPORT:
+		        if ((req->wValue & 0xFF) == 1){
+
+		    	}else if ((req->wValue & 0xFF) == 2){
+
+		    	}else if ((req->wValue & 0xFF) == 3){
+		    		neo();
+
+		    	}else if ((req->wValue & 0xFF) == 4){
+
+		    	}
+		        //USBD_CtlError (pdev, req);
+		        //return USBD_FAIL;
+		    	break;
 		      case HID_REQ_SET_IDLE:
 		    	USBD_HID_IdleState = (uint8_t)(req->wValue >> 8);
 		    	break;

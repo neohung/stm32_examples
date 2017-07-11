@@ -76,6 +76,7 @@ extern uint8_t USBD_HID_SendReport(USB_OTG_CORE_HANDLE  *pdev, uint8_t *report,u
 struct mediaHID_t mediaHID;
 struct keyboardHID_t keyboardHID;
 struct mouseHID_t mouseHID;
+struct joystickHID_t joystickHID;
 volatile int is_user_button_press = 0;
 void delay(int i)
 {
@@ -122,7 +123,41 @@ void send_mouse(void)
 	USBD_HID_SendReport(&USB_OTG_dev, &mouseHID, sizeof(struct mouseHID_t));
 }
 
+void send_joystick(void)
+{
+	joystickHID.id = 4;
+	//joystickHID.left_trigger = 16;
+	//joystickHID.right_trigger = 16;
+	joystickHID.left_analog_x = 0;
+	joystickHID.left_analog_y = 0;
+	joystickHID.right_analog_x = 0;
+	joystickHID.right_analog_y = 0;
+	joystickHID.buttons = 0;
+	//
+	joystickHID.buttons = 1;
+	joystickHID.left_analog_x = -127;
+	joystickHID.right_analog_y = 127;
+	USBD_HID_SendReport(&USB_OTG_dev, &joystickHID, sizeof(struct joystickHID_t));
+/*	  osDelay(100);
+	joystickHID.buttons = 0;
+	joystickHID.left_analog_x = 0;
+	joystickHID.right_analog_y = 0;
+	  USBD_HID_SendReport(&USB_OTG_dev, &joystickHID, sizeof(struct joystickHID_t));
+*/
+}
 volatile osThreadId thread2_id = NULL;
+
+void neo(void)
+{
+	if (is_user_button_press){
+				//send_win_and_r_key();
+				//send_mouse();
+				send_joystick();
+	is_user_button_press = 0;
+	GPIO_ResetBits(GPIOD, GPIO_Pin_14);
+	}
+}
+
 static void Thread2(void const *arg)
 {
 	  while(1)
@@ -131,13 +166,16 @@ static void Thread2(void const *arg)
 	   //osDelay(250);
 	   //printf("Thread2\r\n");
 		//
+		/*
 		if (is_user_button_press){
 			//send_win_and_r_key();
-			send_mouse();
+			//send_mouse();
+			send_joystick();
 		 is_user_button_press = 0;
 
 		  GPIO_ResetBits(GPIOD, GPIO_Pin_14);
 		}
+		*/
 		 osDelay(20);
 	  // GPIO_ResetBits(GPIOD, GPIO_Pin_13);
 	  // osDelay(250);
