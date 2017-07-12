@@ -138,12 +138,12 @@ void send_joystick(void)
 	joystickHID.left_analog_x = -127;
 	joystickHID.right_analog_y = 127;
 	USBD_HID_SendReport(&USB_OTG_dev, &joystickHID, sizeof(struct joystickHID_t));
-/*	  osDelay(100);
+	  osDelay(100);
 	joystickHID.buttons = 0;
 	joystickHID.left_analog_x = 0;
 	joystickHID.right_analog_y = 0;
 	  USBD_HID_SendReport(&USB_OTG_dev, &joystickHID, sizeof(struct joystickHID_t));
-*/
+
 }
 volatile osThreadId thread2_id = NULL;
 
@@ -166,7 +166,7 @@ static void Thread2(void const *arg)
 	   //osDelay(250);
 	   //printf("Thread2\r\n");
 		//
-		/*
+
 		if (is_user_button_press){
 			//send_win_and_r_key();
 			//send_mouse();
@@ -175,7 +175,7 @@ static void Thread2(void const *arg)
 
 		  GPIO_ResetBits(GPIOD, GPIO_Pin_14);
 		}
-		*/
+
 		 osDelay(20);
 	  // GPIO_ResetBits(GPIOD, GPIO_Pin_13);
 	  // osDelay(250);

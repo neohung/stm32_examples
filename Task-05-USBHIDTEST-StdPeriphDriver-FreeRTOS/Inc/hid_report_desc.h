@@ -56,6 +56,7 @@ struct joystickHID_t {
   };
 
 //JOYSTICK
+
 #define HID_REPORT_DESC_SIZE    197
 //+52
 __ALIGN_BEGIN static uint8_t HID_ReportDesc[HID_REPORT_DESC_SIZE]  __ALIGN_END = {

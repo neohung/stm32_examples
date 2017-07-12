@@ -180,16 +180,18 @@ __ALIGN_BEGIN uint8_t USBD_LangIDDesc[USB_SIZ_STRING_LANGID] __ALIGN_END =
 #define USB_SIZ_DEVICE_DESC                     18
 //0x01 means USB_DESC_TYPE_DEVICE
 #define USB_DEVICE_DESCRIPTOR_TYPE              0x01
-#define USBD_VID                     	0x0000
-#define USBD_PID                     	0x0000
+//0x16c0 = 5824
+#define USBD_VID                     	0x16c0
+//0x5df = 1503
+#define USBD_PID                     	0x5df
 //#define USBD_CFG_MAX_NUM                1
 //#define USB_OTG_MAX_EP0_SIZE                 64
 __ALIGN_BEGIN uint8_t USBD_DeviceDesc[USB_SIZ_DEVICE_DESC] __ALIGN_END =
   {
     0x12,                       /*bLength */
     USB_DEVICE_DESCRIPTOR_TYPE, /*bDescriptorType*/
-    0x00,                       /*bcdUSB */
-    0x02,
+    0x10,                       /*bcdUSB 0x00,0x02 or 0x10,0x01*/
+    0x01,
     0x00,                       /*bDeviceClass*/
     0x00,                       /*bDeviceSubClass*/
     0x00,                       /*bDeviceProtocol*/
@@ -198,8 +200,8 @@ __ALIGN_BEGIN uint8_t USBD_DeviceDesc[USB_SIZ_DEVICE_DESC] __ALIGN_END =
     HIBYTE(USBD_VID),           /*idVendor*/
     LOBYTE(USBD_PID),           /*idVendor*/
     HIBYTE(USBD_PID),           /*idVendor*/
-    0x00,                       /*bcdDevice rel. 2.00*/
-    0x02,
+    0x00,                       /*bcdDevice rel. 2.00 = 0x00,0x02*/
+    0x01,
     USBD_IDX_MFC_STR,           /*Index of manufacturer  string*/
     USBD_IDX_PRODUCT_STR,       /*Index of product string*/
     USBD_IDX_SERIAL_STR,        /*Index of serial number string*/
@@ -267,8 +269,8 @@ USBD_DEVICE USR_desc =
 
 #define HID_IN_EP                    0x81
 #define HID_OUT_EP                   0x01
-#define HID_IN_PACKET                4
-#define HID_OUT_PACKET               4
+#define HID_IN_PACKET                8
+#define HID_OUT_PACKET               8
 #include "hid_report_desc.h"
 __ALIGN_BEGIN static uint8_t USBD_HID_CfgDesc[USB_HID_CONFIG_DESC_SIZ] __ALIGN_END =
 {
@@ -289,14 +291,14 @@ __ALIGN_BEGIN static uint8_t USBD_HID_CfgDesc[USB_HID_CONFIG_DESC_SIZ] __ALIGN_E
   0x00,         //bAlternateSetting: Alternate setting
   0x01,         //bNumEndpoints: 1 EP
   0x03,         //bInterfaceClass: 0x03=HID
-  0x01,   /*0x01*/      //bInterfaceSubClass : 1=BOOT, 0=no boot
+  0x00,   /*0x01*/      //bInterfaceSubClass : 1=BOOT, 0=no boot
   0x00,   /*0x02*/      //nInterfaceProtocol : 0=none, 1=keyboard, 2=mouse
   0,            //iInterface: Index of string descriptor
   /******************** HID Descriptor (Joystick Mouse) ********************/
   /* 18 */
   0x09,         //bLength: HID Descriptor size
   HID_DESCRIPTOR_TYPE, //bDescriptorType: 0x21=HID
-  0x11,         //bcdHID Low Byte: HID Class Spec release number=v1.11
+  0x01,         //bcdHID Low Byte: HID Class Spec release number=v1.11
   0x01,         //bcdHID Hi Byte
   0x00,         //bCountryCode: Hardware target country
   0x01,         //bNumDescriptors: Number of HID class descriptors to follow
@@ -334,10 +336,11 @@ extern uint32_t DCD_EP_Close(USB_OTG_CORE_HANDLE *pdev , uint8_t  ep_addr);
 static uint8_t  USBD_HID_Init (void  *pdev,
                                uint8_t cfgidx)
 {
+  printf("USBD_HID_Init\r\n");
   /* Open EP IN */
   DCD_EP_Open(pdev,HID_IN_EP,HID_IN_PACKET, USB_OTG_EP_INT);
   /* Open EP OUT */
-  DCD_EP_Open(pdev, HID_OUT_EP, HID_OUT_PACKET, USB_OTG_EP_INT);
+  //DCD_EP_Open(pdev, HID_OUT_EP, HID_OUT_PACKET, USB_OTG_EP_INT);
   return USBD_OK;
 }
 
@@ -346,7 +349,7 @@ static uint8_t  USBD_HID_DeInit (void  *pdev,
 {
   /* Close HID EPs */
   DCD_EP_Close (pdev , HID_IN_EP);
-  DCD_EP_Close (pdev , HID_OUT_EP);
+  //DCD_EP_Close (pdev , HID_OUT_EP);
   return USBD_OK;
 }
 
@@ -377,6 +380,7 @@ void send_descriptor(void  *pdev, USB_SETUP_REQ *req)
 {
 	  uint16_t len = 0;
 	  uint8_t  *pbuf = NULL;
+	  printf("req->wValue >> 8 == 0x%x\r\n",req->wValue >> 8);
 	  if( req->wValue >> 8 == HID_REPORT_DESC)
 	  {
 		len = MIN(HID_REPORT_DESC_SIZE , req->wLength);
@@ -399,6 +403,29 @@ void neo1(void)
 {
 
 }
+
+static void USBD_ClrFeature(USB_OTG_CORE_HANDLE  *pdev,  USB_SETUP_REQ *req)
+{
+	printf("USBD_ClrFeature: pdev->dev.device_status=%d,req->wValue=%d\r\n",pdev->dev.device_status,req->wValue);
+	switch (pdev->dev.device_status)
+	{
+	case USB_OTG_ADDRESSED:
+	case USB_OTG_CONFIGURED:
+		//USB_FEATURE_EP_HALT=0
+		if (req->wValue == USB_FEATURE_REMOTE_WAKEUP)
+		    {
+		      pdev->dev.DevRemoteWakeup = 0;
+		      //pdev->dev.class_cb->Setup (pdev, req);
+		      printf("req->bmRequest & USB_REQ_TYPE_MASK= 0x%x, req->bRequest=0x%x\r\n ",req->bmRequest & USB_REQ_TYPE_MASK,req->bRequest);
+		      USBD_CtlSendStatus(pdev);
+		    }
+	default :
+	     USBD_CtlError(pdev , req);
+	    break;
+	}
+
+}
+
 __ALIGN_BEGIN static uint32_t  USBD_HID_IdleState __ALIGN_END = 0;
 static uint8_t  USBD_HID_Setup (void  *pdev,
                                 USB_SETUP_REQ *req)
@@ -412,12 +439,13 @@ static uint8_t  USBD_HID_Setup (void  *pdev,
 		    switch (req->bRequest)
 		    {
 		      case HID_REQ_GET_REPORT:
+		    	printf("(req->wValue & 0xFF=%d\r\n",req->wValue & 0xFF);
 		        if ((req->wValue & 0xFF) == 1){
 
 		    	}else if ((req->wValue & 0xFF) == 2){
 
 		    	}else if ((req->wValue & 0xFF) == 3){
-		    		neo();
+		    		//neo();
 
 		    	}else if ((req->wValue & 0xFF) == 4){
 
@@ -425,6 +453,7 @@ static uint8_t  USBD_HID_Setup (void  *pdev,
 		        //USBD_CtlError (pdev, req);
 		        //return USBD_FAIL;
 		    	break;
+
 		      case HID_REQ_SET_IDLE:
 		    	USBD_HID_IdleState = (uint8_t)(req->wValue >> 8);
 		    	break;
@@ -445,6 +474,9 @@ static uint8_t  USBD_HID_Setup (void  *pdev,
 		    	break;
 		    case USB_REQ_SET_INTERFACE :
 		  		break;
+		    case USB_REQ_CLEAR_FEATURE:
+		        USBD_ClrFeature (pdev , req);
+		        break;
 		    default:
 		   	  break;
 			}
