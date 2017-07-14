@@ -160,7 +160,7 @@ extern void USBD_GetString(uint8_t *desc, uint8_t *unicode, uint16_t *len);
 
 #define USBD_LANGID_STRING            	0x409
 #define USBD_MANUFACTURER_STRING      	"STMicroelectronics"
-#define USBD_PRODUCT_FS_STRING        	"TM USB HID device in FS mode"
+#define USBD_PRODUCT_FS_STRING        	"Combo USB HID device in FS mode"
 #define USBD_SERIALNUMBER_FS_STRING   	"00000000011C"
 #define USBD_CONFIGURATION_FS_STRING  	"HID Config"
 #define USBD_INTERFACE_FS_STRING      	"HID Interface"
@@ -190,8 +190,8 @@ __ALIGN_BEGIN uint8_t USBD_DeviceDesc[USB_SIZ_DEVICE_DESC] __ALIGN_END =
   {
     0x12,                       /*bLength */
     USB_DEVICE_DESCRIPTOR_TYPE, /*bDescriptorType*/
-    0x10,                       /*bcdUSB 0x00,0x02 or 0x10,0x01*/
-    0x01,
+    0x00,                       /*bcdUSB 0x00,0x02 or 0x10,0x01*/
+    0x02,
     0x00,                       /*bDeviceClass*/
     0x00,                       /*bDeviceSubClass*/
     0x00,                       /*bDeviceProtocol*/
@@ -201,7 +201,7 @@ __ALIGN_BEGIN uint8_t USBD_DeviceDesc[USB_SIZ_DEVICE_DESC] __ALIGN_END =
     LOBYTE(USBD_PID),           /*idVendor*/
     HIBYTE(USBD_PID),           /*idVendor*/
     0x00,                       /*bcdDevice rel. 2.00 = 0x00,0x02*/
-    0x01,
+    0x02,
     USBD_IDX_MFC_STR,           /*Index of manufacturer  string*/
     USBD_IDX_PRODUCT_STR,       /*Index of product string*/
     USBD_IDX_SERIAL_STR,        /*Index of serial number string*/
@@ -298,7 +298,7 @@ __ALIGN_BEGIN static uint8_t USBD_HID_CfgDesc[USB_HID_CONFIG_DESC_SIZ] __ALIGN_E
   /* 18 */
   0x09,         //bLength: HID Descriptor size
   HID_DESCRIPTOR_TYPE, //bDescriptorType: 0x21=HID
-  0x01,         //bcdHID Low Byte: HID Class Spec release number=v1.11
+  0x11,         //bcdHID Low Byte: HID Class Spec release number=v1.11
   0x01,         //bcdHID Hi Byte
   0x00,         //bCountryCode: Hardware target country
   0x01,         //bNumDescriptors: Number of HID class descriptors to follow

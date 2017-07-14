@@ -73,10 +73,11 @@ void init() {
 
 #include "hid_report_desc.h"
 extern uint8_t USBD_HID_SendReport(USB_OTG_CORE_HANDLE  *pdev, uint8_t *report,uint16_t len);
-struct mediaHID_t mediaHID;
 struct keyboardHID_t keyboardHID;
 struct mouseHID_t mouseHID;
-struct joystickHID_t joystickHID;
+struct joystickHID_t joystickHID1;
+struct joystickHID_t joystickHID2;
+
 volatile int is_user_button_press = 0;
 void delay(int i)
 {
@@ -129,47 +130,51 @@ void send_mouse(void)
 
 void send_joystick1(void)
 {
-	joystickHID.id = 3;
-	//joystickHID.left_trigger = 16;
-	//joystickHID.right_trigger = 16;
-	joystickHID.left_analog_x = 0;
-	joystickHID.left_analog_y = 0;
-	joystickHID.right_analog_x = 0;
-	joystickHID.right_analog_y = 0;
-	joystickHID.buttons = 0;
+	joystickHID1.id = 3;
+	joystickHID1.left_analog_x = 0;
+	joystickHID1.left_analog_y = 0;
+	joystickHID1.right_analog_x = 0;
+	joystickHID1.right_analog_y = 0;
+	joystickHID1.buttons[0] = 0;
+	joystickHID1.buttons[1] = 0;
 	//
-	joystickHID.buttons = 9;
-	joystickHID.left_analog_x = 127;
-	joystickHID.right_analog_y = -127;
-	USBD_HID_SendReport(&USB_OTG_dev, &joystickHID, sizeof(struct joystickHID_t));
-	  osDelay(100);
-	joystickHID.buttons = 0;
-	joystickHID.left_analog_x = 0;
-	joystickHID.right_analog_y = 0;
-	  USBD_HID_SendReport(&USB_OTG_dev, &joystickHID, sizeof(struct joystickHID_t));
-
+	joystickHID1.buttons[0] = 0xFF;
+	joystickHID1.left_analog_x = 127;
+	joystickHID1.left_analog_y = 127;
+	joystickHID1.right_analog_x = 127;
+	joystickHID1.right_analog_y = 127;
+	USBD_HID_SendReport(&USB_OTG_dev, &joystickHID1, sizeof(struct joystickHID_t));
+	osDelay(100);
+	joystickHID1.buttons[0] = 0;
+	joystickHID1.left_analog_x = 0;
+	joystickHID1.left_analog_y = 0;
+	joystickHID1.right_analog_x = 0;
+	joystickHID1.right_analog_y = 0;
+	USBD_HID_SendReport(&USB_OTG_dev, &joystickHID1, sizeof(struct joystickHID_t));
 }
 void send_joystick2(void)
 {
-	joystickHID.id = 4;
-	//joystickHID.left_trigger = 16;
-	//joystickHID.right_trigger = 16;
-	joystickHID.left_analog_x = 0;
-	joystickHID.left_analog_y = 0;
-	joystickHID.right_analog_x = 0;
-	joystickHID.right_analog_y = 0;
-	joystickHID.buttons = 0;
-	//
-	joystickHID.buttons = 1;
-	joystickHID.left_analog_x = -127;
-	joystickHID.right_analog_y = 127;
-	USBD_HID_SendReport(&USB_OTG_dev, &joystickHID, sizeof(struct joystickHID_t));
-	  osDelay(100);
-	joystickHID.buttons = 0;
-	joystickHID.left_analog_x = 0;
-	joystickHID.right_analog_y = 0;
-	  USBD_HID_SendReport(&USB_OTG_dev, &joystickHID, sizeof(struct joystickHID_t));
-
+		joystickHID2.id = 4;
+		joystickHID2.left_analog_x = 0;
+		joystickHID2.left_analog_y = 0;
+		joystickHID2.right_analog_x = 0;
+		joystickHID2.right_analog_y = 0;
+		joystickHID2.buttons[0] = 0;
+		joystickHID2.buttons[1] = 0;
+		//
+		joystickHID2.buttons[1] = 0XFF ;
+		joystickHID2.left_analog_x = -127;
+		joystickHID2.left_analog_y = -127;
+		joystickHID2.right_analog_x = -127;
+		joystickHID2.right_analog_y = -127;
+		USBD_HID_SendReport(&USB_OTG_dev, &joystickHID2, sizeof(struct joystickHID_t));
+		osDelay(100);
+		joystickHID2.buttons[1] = 0;
+		joystickHID2.left_analog_x = 0;
+		joystickHID2.left_analog_y = 0;
+		joystickHID2.right_analog_x = 0;
+		joystickHID2.right_analog_y = 0;
+		USBD_HID_SendReport(&USB_OTG_dev, &joystickHID2, sizeof(struct joystickHID_t));
 }
 volatile osThreadId thread2_id = NULL;
 
@@ -183,7 +188,7 @@ static void Thread2(void const *arg)
 		//
 
 		if (is_user_button_press){
-			send_win_and_r_key();
+			//send_win_and_r_key();
 			send_mouse();
 			send_joystick1();
 			send_joystick2();
