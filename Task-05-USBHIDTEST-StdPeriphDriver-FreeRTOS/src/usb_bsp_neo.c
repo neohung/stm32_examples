@@ -269,8 +269,8 @@ USBD_DEVICE USR_desc =
 
 #define HID_IN_EP                    0x81
 #define HID_OUT_EP                   0x01
-#define HID_IN_PACKET                8
-#define HID_OUT_PACKET               8
+#define HID_IN_PACKET                16
+#define HID_OUT_PACKET               16
 #include "hid_report_desc.h"
 __ALIGN_BEGIN static uint8_t USBD_HID_CfgDesc[USB_HID_CONFIG_DESC_SIZ] __ALIGN_END =
 {
@@ -356,6 +356,7 @@ static uint8_t  USBD_HID_DeInit (void  *pdev,
 static uint8_t  USBD_HID_DataIn (void  *pdev,
                               uint8_t epnum)
 {
+  //printf("USBD_HID_DataIn\r\n");
   DCD_EP_Flush(pdev, HID_IN_EP);
   return USBD_OK;
 }
@@ -445,7 +446,6 @@ static uint8_t  USBD_HID_Setup (void  *pdev,
 		    	}else if ((req->wValue & 0xFF) == 2){
 
 		    	}else if ((req->wValue & 0xFF) == 3){
-		    		//neo();
 
 		    	}else if ((req->wValue & 0xFF) == 4){
 
@@ -455,7 +455,9 @@ static uint8_t  USBD_HID_Setup (void  *pdev,
 		    	break;
 
 		      case HID_REQ_SET_IDLE:
+		    	USBD_HID_IdleState = 0;
 		    	USBD_HID_IdleState = (uint8_t)(req->wValue >> 8);
+		    	printf("USBD_HID_IdleState=%d\r\n",USBD_HID_IdleState);
 		    	break;
 			  default:
 		      USBD_CtlError (pdev, req);

@@ -100,30 +100,56 @@ void EXTI0_IRQHandler(void)
 void send_win_and_r_key(void)
 {
 			  keyboardHID.id = 1;
-			  keyboardHID.modifiers = 0;
-			  keyboardHID.key1 = 0;
-			  keyboardHID.key2 = 0;
-			  keyboardHID.key3 = 0;
-			  keyboardHID.modifiers = USB_HID_MODIFIER_LEFT_GUI;
-			  keyboardHID.key1 = USB_HID_KEY_R;
+			  keyboardHID.modifier = 0;
+			  keyboardHID.keycodes[0] = 0;
+			  keyboardHID.keycodes[1] = 0;
+			  keyboardHID.keycodes[2] = 0;
+			  keyboardHID.keycodes[3] = 0;
+			  keyboardHID.keycodes[4] = 0;
+			  keyboardHID.keycodes[5] = 0;
+			  keyboardHID.modifier = USB_HID_MODIFIER_LEFT_GUI;
+			  keyboardHID.keycodes[0] = USB_HID_KEY_R;
 			  USBD_HID_SendReport(&USB_OTG_dev, &keyboardHID, sizeof(struct keyboardHID_t));
 			  osDelay(30);
-			  keyboardHID.modifiers = 0;
-			  keyboardHID.key1 = 0;
+			  keyboardHID.modifier = 0;
+			  keyboardHID.keycodes[0] = 0;
 			  USBD_HID_SendReport(&USB_OTG_dev, &keyboardHID, sizeof(struct keyboardHID_t));
 }
 
 void send_mouse(void)
 {
 	//Move Mouse to Right Up
-	mouseHID.id = 1;
+	mouseHID.id = 2;
 	mouseHID.buttons = 0;
 	mouseHID.x = 10;
 	mouseHID.y = -10;
+	mouseHID.wheel = 0;
 	USBD_HID_SendReport(&USB_OTG_dev, &mouseHID, sizeof(struct mouseHID_t));
 }
 
-void send_joystick(void)
+void send_joystick1(void)
+{
+	joystickHID.id = 3;
+	//joystickHID.left_trigger = 16;
+	//joystickHID.right_trigger = 16;
+	joystickHID.left_analog_x = 0;
+	joystickHID.left_analog_y = 0;
+	joystickHID.right_analog_x = 0;
+	joystickHID.right_analog_y = 0;
+	joystickHID.buttons = 0;
+	//
+	joystickHID.buttons = 9;
+	joystickHID.left_analog_x = 127;
+	joystickHID.right_analog_y = -127;
+	USBD_HID_SendReport(&USB_OTG_dev, &joystickHID, sizeof(struct joystickHID_t));
+	  osDelay(100);
+	joystickHID.buttons = 0;
+	joystickHID.left_analog_x = 0;
+	joystickHID.right_analog_y = 0;
+	  USBD_HID_SendReport(&USB_OTG_dev, &joystickHID, sizeof(struct joystickHID_t));
+
+}
+void send_joystick2(void)
 {
 	joystickHID.id = 4;
 	//joystickHID.left_trigger = 16;
@@ -147,17 +173,6 @@ void send_joystick(void)
 }
 volatile osThreadId thread2_id = NULL;
 
-void neo(void)
-{
-	if (is_user_button_press){
-				//send_win_and_r_key();
-				//send_mouse();
-				send_joystick();
-	is_user_button_press = 0;
-	GPIO_ResetBits(GPIOD, GPIO_Pin_14);
-	}
-}
-
 static void Thread2(void const *arg)
 {
 	  while(1)
@@ -168,9 +183,10 @@ static void Thread2(void const *arg)
 		//
 
 		if (is_user_button_press){
-			//send_win_and_r_key();
-			//send_mouse();
-			send_joystick();
+			send_win_and_r_key();
+			send_mouse();
+			send_joystick1();
+			send_joystick2();
 		 is_user_button_press = 0;
 
 		  GPIO_ResetBits(GPIOD, GPIO_Pin_14);
