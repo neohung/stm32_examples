@@ -77,7 +77,7 @@ struct keyboardHID_t keyboardHID;
 struct mouseHID_t mouseHID;
 struct joystickHID_t joystickHID1;
 struct joystickHID_t joystickHID2;
-
+struct customerHID_t customerHID;
 volatile int is_user_button_press = 0;
 void delay(int i)
 {
@@ -176,6 +176,12 @@ void send_joystick2(void)
 		joystickHID2.right_analog_y = 0;
 		USBD_HID_SendReport(&USB_OTG_dev, &joystickHID2, sizeof(struct joystickHID_t));
 }
+
+void send_customer(void)
+{
+	customerHID.data = 0x12;
+	USBD_HID_SendReport(&USB_OTG_dev, &customerHID, sizeof(struct customerHID_t));
+}
 volatile osThreadId thread2_id = NULL;
 
 static void Thread2(void const *arg)
@@ -189,7 +195,8 @@ static void Thread2(void const *arg)
 
 		if (is_user_button_press){
 			//send_win_and_r_key();
-			send_mouse();
+			//send_mouse();
+			send_customer();
 			//send_joystick1();
 			//send_joystick2();
 		 is_user_button_press = 0;

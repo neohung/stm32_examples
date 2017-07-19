@@ -162,8 +162,25 @@ struct joystickHID_t {
       uint8_t buttons[2];
   };
 
-//JOYSTICK
+struct customerHID_t {
+	  uint8_t data;
+  };
 
+#define HID_REPORT_DESC_SIZE 19
+__ALIGN_BEGIN static uint8_t HID_ReportDesc[HID_REPORT_DESC_SIZE]  __ALIGN_END = {
+			0x05, 0x01,                    // USAGE_PAGE (Generic Desktop)
+		    0xa1, 0x01,                    // COLLECTION (Application)
+		    0x15, 0x00,                    //   LOGICAL_MINIMUM (0)
+		    0x26, 0xff, 0x00,              //   LOGICAL_MAXIMUM (255)
+		    0x95, 0x01,                    //   REPORT_COUNT (1)
+		    0x75, 0x08,                    //   REPORT_SIZE (8)
+		    0xb2, 0x02, 0x01,              //   FEATURE (Data,Var,Abs,Buf)
+		    0x09, 0x00,                    //   USAGE (Undefined)
+		    0xc0
+};
+
+//JOYSTICK
+/*
 #define HID_REPORT_DESC_SIZE 47+54+46+46
 __ALIGN_BEGIN static uint8_t HID_ReportDesc[HID_REPORT_DESC_SIZE]  __ALIGN_END = {
 //Keyboard 47 bytes
@@ -272,5 +289,5 @@ __ALIGN_BEGIN static uint8_t HID_ReportDesc[HID_REPORT_DESC_SIZE]  __ALIGN_END =
 			 0xc0,                         // END_COLLECTION
 
 };
-
+*/
 #endif

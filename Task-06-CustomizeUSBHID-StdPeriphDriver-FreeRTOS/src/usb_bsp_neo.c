@@ -27,6 +27,10 @@
 #include "usbd_def.h"
 
 #include "usbd_core.h" // for USB_OTG_CONFIGURED, USBD_OK
+
+//extern uint8_t Buffer[];
+uint8_t Buffer[256];
+
 //======================================(1) Start =======================================
 void USB_OTG_BSP_Init(USB_OTG_CORE_HANDLE *pdev)
 {
@@ -260,7 +264,7 @@ USBD_DEVICE USR_desc =
 
 //======================================(5) Start =======================================
 
-#define USB_HID_CONFIG_DESC_SIZ       34
+#define USB_HID_CONFIG_DESC_SIZ       34+7
 #define USB_CONFIGURATION_DESCRIPTOR_TYPE       0x02
 #define USB_INTERFACE_DESCRIPTOR_TYPE           0x04
 #define USB_ENDPOINT_DESCRIPTOR_TYPE            0x05
@@ -289,7 +293,7 @@ __ALIGN_BEGIN static uint8_t USBD_HID_CfgDesc[USB_HID_CONFIG_DESC_SIZ] __ALIGN_E
   USB_INTERFACE_DESCRIPTOR_TYPE,   //bDescriptorType: Interface descriptor type=0x04
   0x00,         //bInterfaceNumber: Number of Interface
   0x00,         //bAlternateSetting: Alternate setting
-  0x01,         //bNumEndpoints: 1 EP
+  0x02,         //bNumEndpoints: 1 EP
   0x03,         //bInterfaceClass: 0x03=HID
   0x00,   /*0x01*/      //bInterfaceSubClass : 1=BOOT, 0=no boot
   0x00,   /*0x02*/      //nInterfaceProtocol : 0=none, 1=keyboard, 2=mouse
@@ -315,6 +319,15 @@ __ALIGN_BEGIN static uint8_t USBD_HID_CfgDesc[USB_HID_CONFIG_DESC_SIZ] __ALIGN_E
   0x00,          //wMaxPacketSize Hi Byte
   0x0A,          //bInterval: Polling Interval (10 ms)
   /* 34 */
+  /******************** Endpoint Descriptor ********************/
+   0x07,          //bLength: Endpoint Descriptor size
+   USB_ENDPOINT_DESCRIPTOR_TYPE, //bDescriptorType: 0x05=EP
+   HID_OUT_EP,     //bEndpointAddress: Endpoint Address (IN) 0x81
+   0x03,          //bmAttributes: Interrupt endpoint=0x03
+   HID_OUT_PACKET, //wMaxPacketSize Low Byte: 4 Byte max
+   0x00,          //wMaxPacketSize Hi Byte
+   0x0A,          //bInterval: Polling Interval (10 ms)
+   /* 41 */
 } ;
 
 
@@ -340,7 +353,9 @@ static uint8_t  USBD_HID_Init (void  *pdev,
   /* Open EP IN */
   DCD_EP_Open(pdev,HID_IN_EP,HID_IN_PACKET, USB_OTG_EP_INT);
   /* Open EP OUT */
-  //DCD_EP_Open(pdev, HID_OUT_EP, HID_OUT_PACKET, USB_OTG_EP_INT);
+  DCD_EP_Open(pdev, HID_OUT_EP, HID_OUT_PACKET, USB_OTG_EP_INT);
+  /* Prepare Out endpoint to receive next packet */
+  DCD_EP_PrepareRx(pdev, HID_OUT_EP, (uint8_t*)(Buffer), HID_OUT_PACKET);
   return USBD_OK;
 }
 
@@ -349,7 +364,7 @@ static uint8_t  USBD_HID_DeInit (void  *pdev,
 {
   /* Close HID EPs */
   DCD_EP_Close (pdev , HID_IN_EP);
-  //DCD_EP_Close (pdev , HID_OUT_EP);
+  DCD_EP_Close (pdev , HID_OUT_EP);
   return USBD_OK;
 }
 
@@ -361,6 +376,32 @@ static uint8_t  USBD_HID_DataIn (void  *pdev,
   return USBD_OK;
 }
 
+static uint8_t  USBD_HID_DataOut (void  *pdev,
+                              uint8_t epnum)
+{
+	uint16_t USB_RecData_Cnt;
+	if (epnum == HID_OUT_EP)
+	{
+		USB_RecData_Cnt = ((USB_OTG_CORE_HANDLE*)pdev)->dev.out_ep[epnum].xfer_count;
+		printf("USBD_HID_DataOut for HID_OUT_EP, read size=%d\r\n", USB_RecData_Cnt);
+		if (((USB_OTG_CORE_HANDLE*)pdev)->dev.device_status == USB_OTG_CONFIGURED )
+		{
+			printf("USBD_HID_DataOut: USB_OTG_CONFIGURED\r\n");
+			int i;
+			printf("Buffer[%d]:\r\n",USB_RecData_Cnt);
+			for(i=0;i<USB_RecData_Cnt;i++){
+				printf("0x%X ",Buffer[i]);
+			}
+			printf("\r\n");
+		}else{
+			printf("USBD_HID_DataOut: Not USB_OTG_CONFIGURED\r\n");
+		}
+
+		// Prepare Out endpoint to receive next packet
+		DCD_EP_PrepareRx(pdev, HID_OUT_EP, (uint8_t*)(Buffer), HID_OUT_PACKET);
+	}
+  return USBD_OK;
+}
 
 typedef enum
 {
@@ -494,7 +535,7 @@ USBD_Class_cb_TypeDef  USBD_neo_cb =
   NULL, /*EP0_TxSent*/
   NULL, /*EP0_RxReady*/
   USBD_HID_DataIn, /*DataIn*/
-  NULL, /*DataOut*/
+  USBD_HID_DataOut, /*DataOut*/
   NULL, /*SOF */
   NULL,
   NULL,
