@@ -5,7 +5,7 @@ SRCS = main.cpp
 ###################################################
 
 # Project name
-PROJ_NAME=libusb_customer_hid
+PROJ_NAME=test_pc
 OUTPATH=build
 
 ###################################################
