@@ -3,7 +3,7 @@
 SRCS = main.c stm32f4xx_it.c system_stm32f4xx.c syscalls.c
 
 # USB
-SRCS += usb_bsp_neo.c
+SRCS += usb_bsp_neo.c queue.c
 
 # Project name
 PROJ_NAME=test_stm

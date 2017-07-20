@@ -34,6 +34,68 @@ usb_dev_handle *open_dev(unsigned short MY_VID, unsigned short MY_PID)
     return NULL;
 }
 
+struct usb_dev_handle* usbhid_start(unsigned short PID, unsigned short VID, int INTF)
+{
+		usb_init(); // initialize the library
+		usb_find_busses(); // find all busses
+		usb_find_devices(); // find all connected devices
+		struct usb_dev_handle* usbhandle = NULL;
+		if (!(usbhandle = open_dev(PID, VID)))
+		{
+		        printf("error opening device: \n%s\n", usb_strerror());
+		        exit(0);
+		}
+		else
+		{
+		    printf("success: device %04X:%04X opened\n", PID, VID);
+		}
+	    //
+		//int MY_INTF = 0;
+		if (usb_claim_interface(usbhandle, INTF) < 0)  //dfu_bInterfaceNumber
+		{
+			printf("error claiming interface #%d:\n%s\n", INTF, usb_strerror());
+			usb_close(usbhandle);
+			exit(0);
+		}
+		return usbhandle;
+}
+
+void usbhid_stop(struct usb_dev_handle* usbhandle, int INTF)
+{
+	usb_release_interface(usbhandle, INTF);
+	usb_close(usbhandle);
+}
+
+void usbhid_send(struct usb_dev_handle* usbhandle, int ep, char* buf, unsigned int len)
+{
+	int MY_EP_Out = 0x01;
+	const static int timeout=5000; // timeout in ms
+	int res = usb_interrupt_write(usbhandle, MY_EP_Out, buf, len, timeout);
+	if( res < 0 )
+	{
+	     perror("USB interrupt write");
+	}
+}
+
+int main(void) {
+	struct usb_dev_handle* usbhandle  = usbhid_start(0x16C0,0x05DF,0);
+	//
+	int MY_EP_In = 0x81;
+
+	int c;
+	puts ("Enter text. Include a dot ('.') in a sentence to exit:");
+	do {
+	    c=getchar();
+	    putchar (c);
+	} while (c != '.');
+
+	puts("Finish");
+	usbhid_stop(usbhandle,0);
+	system("pause");
+	return EXIT_SUCCESS;
+}
+
+/*
 int main(void) {
 	puts("test");
 	usb_init(); // initialize the library
@@ -84,7 +146,7 @@ int main(void) {
 	}
 
 	//printf("Dats=0x%X\n",data[0]);
-
+*/
 	/*
 	#define USB_ENDPOINT_IN         MY_EP
     #define USB_TYPE_CLASS          (0x01 << 5)
@@ -105,10 +167,11 @@ int main(void) {
 		printf("\n");
 		printf("Report_ID=%d, X=%d,Y=%d\n",recv_data[0],recv_data[2],recv_data[3]);
    */
-
+/*
 	puts("Finish");
 	usb_release_interface(usbhandle, MY_INTF);
 	usb_close(usbhandle);
 	system("pause");
 	return EXIT_SUCCESS;
 }
+*/

@@ -17,6 +17,12 @@
 #include "event_groups.h"
 
 #include "usb_core.h" //in USB_OTG
+
+#include "queue.h"
+queue_t data_in;
+queue_t data_out;
+
+
 __ALIGN_BEGIN USB_OTG_CORE_HANDLE  USB_OTG_dev __ALIGN_END;
 
 // Private function prototypes
@@ -221,6 +227,19 @@ static void Thread3(void const *arg)
 		  osDelay(500);
 		  //delay(5);
 		  //printf("B");
+
+		  static queue_element_t *e;
+		  unsigned int tail;
+		  tail = getNextQueueData(&data_in, &e);
+		  if (e) {
+			    printf("Recv size: %d\r\n",e->len);
+				queue_element_t elem;
+				int i;
+				for(i=0;i<e->len;i++){
+					printf("0x%X ",e->data[i]);
+				}
+				printf("\r\n");
+		  }
 		  GPIO_ResetBits(GPIOD, GPIO_Pin_12);
 		  //delay(5);
 		  osDelay(500);
@@ -261,6 +280,10 @@ int main(void) {
 	setbuf(stdout, NULL);
     osThreadDef(USER_Thread1, mainThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
     main_thread_id = osThreadCreate(osThread(USER_Thread1), NULL);
+    //
+    queueInit(&data_in);
+    queueInit(&data_out);
+    //
     osKernelStart();
 	while(1){};
 	return 0;

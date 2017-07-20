@@ -27,7 +27,8 @@
 #include "usbd_def.h"
 
 #include "usbd_core.h" // for USB_OTG_CONFIGURED, USBD_OK
-
+#include "queue.h"
+extern queue_t data_in;
 //extern uint8_t Buffer[];
 uint8_t Buffer[256];
 
@@ -383,16 +384,23 @@ static uint8_t  USBD_HID_DataOut (void  *pdev,
 	if (epnum == HID_OUT_EP)
 	{
 		USB_RecData_Cnt = ((USB_OTG_CORE_HANDLE*)pdev)->dev.out_ep[epnum].xfer_count;
-		printf("USBD_HID_DataOut for HID_OUT_EP, read size=%d\r\n", USB_RecData_Cnt);
+		//printf("USBD_HID_DataOut for HID_OUT_EP, read size=%d\r\n", USB_RecData_Cnt);
 		if (((USB_OTG_CORE_HANDLE*)pdev)->dev.device_status == USB_OTG_CONFIGURED )
 		{
-			printf("USBD_HID_DataOut: USB_OTG_CONFIGURED\r\n");
+			//printf("USBD_HID_DataOut: USB_OTG_CONFIGURED\r\n");
 			int i;
 			printf("Buffer[%d]:\r\n",USB_RecData_Cnt);
+			queue_element_t elem;
 			for(i=0;i<USB_RecData_Cnt;i++){
 				printf("0x%X ",Buffer[i]);
+				elem.data[i] = Buffer[i];
 			}
+			elem.len = USB_RecData_Cnt;
 			printf("\r\n");
+			while (!pushQueueElement(&data_in,  elem)) {
+				//printf("\nout buffer full!!!\n");
+				 osDelay(5);
+			}
 		}else{
 			printf("USBD_HID_DataOut: Not USB_OTG_CONFIGURED\r\n");
 		}
