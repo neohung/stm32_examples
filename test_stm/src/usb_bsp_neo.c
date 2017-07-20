@@ -389,22 +389,27 @@ static uint8_t  USBD_HID_DataOut (void  *pdev,
 		{
 			//printf("USBD_HID_DataOut: USB_OTG_CONFIGURED\r\n");
 			int i;
-			printf("Buffer[%d]:\r\n",USB_RecData_Cnt);
+			//printf("Buffer[%d]:\r\n",USB_RecData_Cnt);
 			queue_element_t elem;
 			for(i=0;i<USB_RecData_Cnt;i++){
-				printf("0x%X ",Buffer[i]);
+				//printf("0x%X ",Buffer[i]);
 				elem.data[i] = Buffer[i];
 			}
 			elem.len = USB_RecData_Cnt;
-			printf("\r\n");
+			//printf("\r\n");
+
 			while (!pushQueueElement(&data_in,  elem)) {
 				//printf("\nout buffer full!!!\n");
 				 osDelay(5);
 			}
+			/*
+			if (!pushQueueElement(&data_in,  elem)){
+				printf("data_in overflow\r\n");
+			}
+			*/
 		}else{
 			printf("USBD_HID_DataOut: Not USB_OTG_CONFIGURED\r\n");
 		}
-
 		// Prepare Out endpoint to receive next packet
 		DCD_EP_PrepareRx(pdev, HID_OUT_EP, (uint8_t*)(Buffer), HID_OUT_PACKET);
 	}

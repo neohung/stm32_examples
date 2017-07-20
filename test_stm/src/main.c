@@ -202,7 +202,7 @@ static void Thread2(void const *arg)
 		if (is_user_button_press){
 			//send_win_and_r_key();
 			//send_mouse();
-			send_customer();
+			//send_customer();
 			//send_joystick1();
 			//send_joystick2();
 		 is_user_button_press = 0;
@@ -221,30 +221,29 @@ extern __IO uint32_t uwTick;
 static void Thread3(void const *arg)
 {
      printf("test\r\n");
-	  while(1)
+     static queue_element_t *e;
+	 while(1)
 	 {
-		  GPIO_SetBits(GPIOD, GPIO_Pin_12);
-		  osDelay(500);
+		  //GPIO_SetBits(GPIOD, GPIO_Pin_12);
+		  //osDelay(5);
 		  //delay(5);
-		  //printf("B");
-
-		  static queue_element_t *e;
+		  //printf("<B>");
 		  unsigned int tail;
 		  tail = getNextQueueData(&data_in, &e);
+		  //printf("tail=%d\r\n",tail);
 		  if (e) {
 			    printf("Recv size: %d\r\n",e->len);
-				queue_element_t elem;
-				int i;
+				//queue_element_t elem;
+			    int i;
 				for(i=0;i<e->len;i++){
 					printf("0x%X ",e->data[i]);
 				}
 				printf("\r\n");
 		  }
-		  GPIO_ResetBits(GPIOD, GPIO_Pin_12);
+		  //GPIO_ResetBits(GPIOD, GPIO_Pin_12);
 		  //delay(5);
-		  osDelay(500);
+		  osDelay(5);
 	 }
-
 }
 
 

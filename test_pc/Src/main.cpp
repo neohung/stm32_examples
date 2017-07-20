@@ -8,8 +8,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <conio.h> //getch()
 #include <lusb0_usb.h>
+
+#include <pthread.h>
 
 unsigned char Buffer[128];
 
@@ -68,27 +70,48 @@ void usbhid_stop(struct usb_dev_handle* usbhandle, int INTF)
 
 void usbhid_send(struct usb_dev_handle* usbhandle, int ep, char* buf, unsigned int len)
 {
-	int MY_EP_Out = 0x01;
 	const static int timeout=5000; // timeout in ms
-	int res = usb_interrupt_write(usbhandle, MY_EP_Out, buf, len, timeout);
+	int res = usb_interrupt_write(usbhandle, ep, buf, len, timeout);
 	if( res < 0 )
 	{
 	     perror("USB interrupt write");
+	     usbhid_stop(usbhandle,0);
+	     system("pause");
+	     exit(0);
 	}
+}
+
+void *thread1(void *arg)
+{
+    while (1)
+    {
+        printf("T1T1T1T1T1T1T1T1T1T1T1\n");
+        //fflush(stdout);
+        Sleep(1000);
+    }
+    return NULL;
 }
 
 int main(void) {
 	struct usb_dev_handle* usbhandle  = usbhid_start(0x16C0,0x05DF,0);
 	//
 	int MY_EP_In = 0x81;
+	int MY_EP_Out = 0x01;
 
-	int c;
+	pthread_t Tid1, Tid2;
+	pthread_create(&Tid1, NULL, thread1, NULL);
+	 while (1)
+	     {
+	         printf("in fatherprocess!\n");
+	         Sleep(2000);
+	     }
+	char c;
 	puts ("Enter text. Include a dot ('.') in a sentence to exit:");
 	do {
-	    c=getchar();
-	    putchar (c);
+	    c=getch();
+	    //putchar(c);
+	    usbhid_send(usbhandle, MY_EP_Out, &c, 1);
 	} while (c != '.');
-
 	puts("Finish");
 	usbhid_stop(usbhandle,0);
 	system("pause");

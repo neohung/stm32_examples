@@ -20,7 +20,7 @@ SIZE=$(BINPATH)size
 ###################################################
 
 CXXFLAGS  = -O2 -g -Wall -fmessage-length=0
-CXXFLAGS += 
+CXXFLAGS +=  -DHAVE_STRUCT_TIMESPEC
 
 ###################################################
 
@@ -38,7 +38,7 @@ CXXFLAGS += -IInc
 LIBPATHS = -LLib 
 
 # Libraries to link
-LIBS = -lm -lusb
+LIBS = -lm -lusb -lpthreadGC2
 
 # Extra includes
 CXXFLAGS += 
