@@ -81,30 +81,44 @@ void usbhid_send(struct usb_dev_handle* usbhandle, int ep, char* buf, unsigned i
 	}
 }
 
+
+void usbhid_read(struct usb_dev_handle* usbhandle, int ep, char* buf, unsigned int len)
+{
+	const int data_len=255;
+	char data[data_len];
+	int res;
+	res = usb_interrupt_read(usbhandle, ep, buf, len, -1);
+	//printf( "\nusb_interrupt_read size=%d \n [ ",res );
+	//for(int i=0;i<res;i++) {
+	//	printf("0x%X ", data[i]);
+	//}
+	//printf("]\n");
+}
+
 void *thread1(void *arg)
 {
+	struct usb_dev_handle* usbhandle = (struct usb_dev_handle*)arg;
+	int MY_EP_In = 0x81;
+	char buf[255];
     while (1)
     {
-        printf("T1T1T1T1T1T1T1T1T1T1T1\n");
+        //printf("T1T1T1T1T1T1T1T1T1T1T1\n");
         //fflush(stdout);
-        Sleep(1000);
+        usbhid_read(usbhandle, MY_EP_In, buf, 1);
+        printf("buf[0]=[%c]\n",buf[0]);
+        Sleep(1);
     }
+    //pthread_exit((void *)1234);
     return NULL;
 }
 
 int main(void) {
 	struct usb_dev_handle* usbhandle  = usbhid_start(0x16C0,0x05DF,0);
 	//
-	int MY_EP_In = 0x81;
 	int MY_EP_Out = 0x01;
 
 	pthread_t Tid1, Tid2;
-	pthread_create(&Tid1, NULL, thread1, NULL);
-	 while (1)
-	     {
-	         printf("in fatherprocess!\n");
-	         Sleep(2000);
-	     }
+	pthread_create(&Tid1, NULL, thread1,  (void*)usbhandle);
 	char c;
 	puts ("Enter text. Include a dot ('.') in a sentence to exit:");
 	do {
@@ -112,6 +126,11 @@ int main(void) {
 	    //putchar(c);
 	    usbhid_send(usbhandle, MY_EP_Out, &c, 1);
 	} while (c != '.');
+	//pthread_cancel(Tid1);
+	pthread_kill(Tid1, 9);
+	void *ret;
+	pthread_join( Tid1, &ret);
+	//pthread_kill(Tid1, 9); //SIGKILL
 	puts("Finish");
 	usbhid_stop(usbhandle,0);
 	system("pause");

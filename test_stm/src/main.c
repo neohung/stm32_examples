@@ -220,7 +220,7 @@ volatile osThreadId thread3_id = NULL;
 extern __IO uint32_t uwTick;
 static void Thread3(void const *arg)
 {
-     printf("test\r\n");
+     //printf("test\r\n");
      static queue_element_t *e;
 	 while(1)
 	 {
@@ -232,13 +232,14 @@ static void Thread3(void const *arg)
 		  tail = getNextQueueData(&data_in, &e);
 		  //printf("tail=%d\r\n",tail);
 		  if (e) {
-			    printf("Recv size: %d\r\n",e->len);
-				//queue_element_t elem;
-			    int i;
-				for(i=0;i<e->len;i++){
-					printf("0x%X ",e->data[i]);
-				}
-				printf("\r\n");
+			    //printf("Recv size: %d\r\n",e->len);
+			    //int i;
+				//for(i=0;i<e->len;i++){
+				//	printf("0x%X ",e->data[i]);
+				//}
+				//printf("\r\n");
+				customerHID.data = e->data[0];
+				USBD_HID_SendReport(&USB_OTG_dev, &customerHID, sizeof(struct customerHID_t));
 		  }
 		  //GPIO_ResetBits(GPIOD, GPIO_Pin_12);
 		  //delay(5);
