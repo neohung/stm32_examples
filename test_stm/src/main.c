@@ -194,8 +194,8 @@ static void Thread2(void const *arg)
 {
 	  while(1)
 	 {
-	   //GPIO_SetBits(GPIOD, GPIO_Pin_13);
-	   //osDelay(250);
+	   GPIO_SetBits(GPIOD, GPIO_Pin_13);
+	   osDelay(250);
 	   //printf("Thread2\r\n");
 		//
 
@@ -210,9 +210,9 @@ static void Thread2(void const *arg)
 		  GPIO_ResetBits(GPIOD, GPIO_Pin_14);
 		}
 
-		 osDelay(20);
-	  // GPIO_ResetBits(GPIOD, GPIO_Pin_13);
-	  // osDelay(250);
+		// osDelay(20);
+	  GPIO_ResetBits(GPIOD, GPIO_Pin_13);
+	   osDelay(250);
 	 }
 }
 
@@ -272,7 +272,7 @@ static void mainThread(void const *arg)
 
 int main(void) {
 	init();
-    //printf("init\r\n");
+    printf("init\r\n");
 	/*
 	 * Disable STDOUT buffering. Otherwise nothing will be printed
 	 * before a newline character or when the buffer is flushed.

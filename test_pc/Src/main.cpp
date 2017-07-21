@@ -95,8 +95,16 @@ void usbhid_read(struct usb_dev_handle* usbhandle, int ep, char* buf, unsigned i
 	//printf("]\n");
 }
 
+pthread_t Tid1, Tid2;
+
 void *thread1(void *arg)
 {
+	 int s;
+	 s = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+	 if (s != 0){
+		 printf("pthread_setcancelstate error\n");
+		 exit(EXIT_FAILURE);
+	 }
 	struct usb_dev_handle* usbhandle = (struct usb_dev_handle*)arg;
 	int MY_EP_In = 0x81;
 	char buf[255];
@@ -104,6 +112,8 @@ void *thread1(void *arg)
     {
         //printf("T1T1T1T1T1T1T1T1T1T1T1\n");
         //fflush(stdout);
+    	//set cancel interrupt point
+    	pthread_testcancel();
         usbhid_read(usbhandle, MY_EP_In, buf, 1);
         printf("buf[0]=[%c]\n",buf[0]);
         Sleep(1);
@@ -112,24 +122,34 @@ void *thread1(void *arg)
     return NULL;
 }
 
+void *thread2(void *arg)
+{
+		struct usb_dev_handle* usbhandle = (struct usb_dev_handle*)arg;
+		int MY_EP_Out = 0x01;
+		char c;
+		puts ("Enter text. Include a dot ('.') in a sentence to exit:");
+		do {
+		    c=getch();
+		    //putchar(c);
+		    usbhid_send(usbhandle, MY_EP_Out, &c, 1);
+		    Sleep(1);
+		} while (c != '.');
+		pthread_cancel(Tid1);
+		pthread_exit(NULL);
+}
+
 int main(void) {
 	struct usb_dev_handle* usbhandle  = usbhid_start(0x16C0,0x05DF,0);
 	//
-	int MY_EP_Out = 0x01;
-
-	pthread_t Tid1, Tid2;
-	pthread_create(&Tid1, NULL, thread1,  (void*)usbhandle);
-	char c;
-	puts ("Enter text. Include a dot ('.') in a sentence to exit:");
-	do {
-	    c=getch();
-	    //putchar(c);
-	    usbhid_send(usbhandle, MY_EP_Out, &c, 1);
-	} while (c != '.');
-	//pthread_cancel(Tid1);
-	pthread_kill(Tid1, 9);
+	pthread_attr_t attr;
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+	pthread_create(&Tid1, &attr, thread1,  (void*)usbhandle);
+	pthread_create(&Tid2, &attr, thread2,  (void*)usbhandle);
 	void *ret;
-	pthread_join( Tid1, &ret);
+	pthread_join(Tid1, &ret);
+	pthread_join(Tid2, &ret);
+	pthread_attr_destroy(&attr);
 	//pthread_kill(Tid1, 9); //SIGKILL
 	puts("Finish");
 	usbhid_stop(usbhandle,0);
