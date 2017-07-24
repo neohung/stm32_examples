@@ -1,6 +1,6 @@
 # Sources
 
-SRCS = main.cpp
+SRCS = main.cpp ringbuf.cpp
 
 ###################################################
 
