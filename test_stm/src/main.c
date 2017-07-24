@@ -218,10 +218,11 @@ static void Thread2(void const *arg)
 
 volatile osThreadId thread3_id = NULL;
 extern __IO uint32_t uwTick;
-static void Thread3(void const *arg)
+static void process_data_in(void const *arg)
 {
      //printf("test\r\n");
      static queue_element_t *e;
+     /*
 	 while(1)
 	 {
 		  //GPIO_SetBits(GPIOD, GPIO_Pin_12);
@@ -245,6 +246,7 @@ static void Thread3(void const *arg)
 		  //delay(5);
 		  osDelay(5);
 	 }
+	 */
 }
 
 
@@ -263,8 +265,9 @@ static void mainThread(void const *arg)
 			  &USR_cb);
 	 osThreadDef(USER_Thread2, Thread2, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
 	 thread2_id = osThreadCreate(osThread(USER_Thread2), NULL);
-	 osThreadDef(USER_Thread3, Thread3, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
-	 thread3_id = osThreadCreate(osThread(USER_Thread3), NULL);
+
+	 osThreadDef(USER_Thread_process_data_in, process_data_in, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
+	 thread3_id = osThreadCreate(osThread(USER_Thread_process_data_in), NULL);
 	 vTaskDelete( NULL );
 }
 
