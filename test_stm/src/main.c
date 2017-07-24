@@ -216,12 +216,45 @@ static void Thread2(void const *arg)
 	 }
 }
 
+unsigned char polling_data(void)
+{
+	static queue_element_t *e;
+	unsigned int tail;
+	do{
+	    tail = getNextQueueData(&data_in, &e);
+	    if (e) {
+	    	break;
+	    }else{
+	    	osDelay(5);
+	    }
+	}while(1);
+	return e->data[0];
+}
+
 volatile osThreadId thread3_id = NULL;
 extern __IO uint32_t uwTick;
+
+char param[256];
 static void process_data_in(void const *arg)
 {
      //printf("test\r\n");
-     static queue_element_t *e;
+     char checksum = 0xFF;
+     do{
+     }while(polling_data() == 0xEA);
+     checksum -= 0xEA;
+     unsigned char Command_type_id = polling_data();
+     checksum -= Command_type_id;
+     unsigned char len = polling_data();
+     int i;
+     for (i=0;i<len;i++){
+    	 param[i] = polling_data();
+    	 checksum -= param[i];
+     }
+     if (polling_data() != checksum){
+    	 printf("Checksum error, skip this\n");
+     }
+     // Pass command_type id and param[] and len
+     //
      /*
 	 while(1)
 	 {
