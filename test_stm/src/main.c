@@ -244,22 +244,22 @@ void send_message(char* buf,unsigned int len){
 	elem.data[0] = 0xEA;
 	elem.len = 1;
 	while (!pushQueueElement(&data_out,  elem)) {
-		osDelay(5);
+		osDelay(1);
 	}
 	crc -= 0xEA;
 	//
 	for(i=0;i<len;i++){
 		elem.data[0] = buf[i];
 		while (!pushQueueElement(&data_out,  elem)) {
-				osDelay(5);
+				osDelay(1);
 		}
 		crc -= buf[i];
 	}
 	//push crc
-	printf("Push crc: 0x%X \n",crc);
+	//printf("Push crc: 0x%X \n",crc);
 	elem.data[0] = crc;
 	while (!pushQueueElement(&data_out,  elem)) {
-			osDelay(5);
+			osDelay(1);
 	}
 	//
 }
@@ -298,7 +298,7 @@ static void process_data_out(void const *arg)
 		 	    if (e) {
 		 	    	break;
 		 	    }else{
-		 	    	osDelay(5);
+		 	    	osDelay(1);
 		 	    }
 		 	};
 		 	 //e->data[0];
