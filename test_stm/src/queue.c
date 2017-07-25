@@ -8,7 +8,10 @@ void queueInit(queue_t *q)
 }
 unsigned int pushQueueElement(queue_t *q, queue_element_t elem)
 {
-	if (q->len == NUM_INPUT_QUEUES)  return 0; // queue overflow
+	if (q->len == NUM_INPUT_QUEUES){
+		//printf("pushQueueElement overflow\r\n");
+		return 0; // queue overflow
+	}
 	q->queue[q->head] = elem;
 	q->head = ++q->head & (NUM_INPUT_QUEUES - 1);
 	return ++q->len;
@@ -23,6 +26,7 @@ unsigned int getNextQueueData(queue_t *q, queue_element_t **e)
 		q->len--;
 		return q->tail;
 	}
+	//printf("getNextQueueData none\r\n");
 	*e = 0;
 	return -1;
 }

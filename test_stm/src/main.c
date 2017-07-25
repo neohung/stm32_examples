@@ -225,7 +225,7 @@ unsigned char polling_data(void)
 	    if (e) {
 	    	break;
 	    }else{
-	    	osDelay(5);
+	    	osDelay(20);
 	    }
 	};
 	return e->data[0];
@@ -289,10 +289,15 @@ void processCommand(unsigned char Command_type_id, char* arg ,unsigned char arg_
 static void process_data_out(void const *arg)
 {
      //printf("test\r\n");
+	 //static queue_element_t *e = 0;
+	 queue_element_t *e = 0;
+	 unsigned int tail;
 	 while(1)
 	 {
-		 static queue_element_t *e = 0;
-		 	unsigned int tail;
+		 //printf("process_data_out\r\n");
+		 e = 0;
+
+		 	//unsigned int tail;
 		 	while(1){
 		 	    tail = getNextQueueData(&data_out, &e);
 		 	    if (e) {
@@ -301,10 +306,14 @@ static void process_data_out(void const *arg)
 		 	    	osDelay(1);
 		 	    }
 		 	};
-		 	 //e->data[0];
+
+		// tail = getNextQueueData(&data_out, &e);
+		// osDelay(1);
+		 //e->data[0];
 		 	customerHID.data = e->data[0];
+		 	//customerHID.data = 0;
 		 	USBD_HID_SendReport(&USB_OTG_dev, &customerHID, sizeof(struct customerHID_t));
-		 	osDelay(5);
+		 	//osDelay(100);
 	 }
 }
 
@@ -314,6 +323,7 @@ static void process_data_in(void const *arg)
      //printf("test\r\n");
 	 while(1)
 	 {
+		// printf("process_data_in\r\n");
 		  char checksum = 0xFF;
 		  do{
 		  }while(polling_data() != 0xEA);

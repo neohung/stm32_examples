@@ -1,6 +1,6 @@
 #ifndef QUEUE_H_
 #define QUEUE_H_
-#define NUM_INPUT_QUEUES 8
+#define NUM_INPUT_QUEUES 16
 #define MAX_DATA_ELEMENTS_LENGTH 128
 
 typedef struct __queue_element_t {

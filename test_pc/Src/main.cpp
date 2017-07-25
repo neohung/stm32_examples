@@ -89,7 +89,7 @@ void usbhid_send(struct usb_dev_handle* usbhandle, int ep, char* buf, unsigned i
 bool usbhid_read(struct usb_dev_handle* usbhandle, int ep, char* buf, unsigned int len)
 {
 	const int data_len=255;
-	const int timeout = 1000;
+	const int timeout = 100;
 	char data[data_len];
 	int res;
 	res = usb_interrupt_read(usbhandle, ep, buf, len, timeout);
@@ -130,6 +130,35 @@ void *message_read(void *arg)
     return NULL;
 }
 
+unsigned char polling_data(void)
+{
+	unsigned char* pdata;
+	unsigned int tail;
+	while(1){
+		tail = getNextData(&message_in_ringbuf, &pdata);
+	    if (pdata){
+	    		//printf("data[%d]=0x%X\n",(tail-1)&(RINGBUF_MAX_LENGTH-1),*pdata);
+	    		break;
+	    }else{
+	    	Sleep(1);
+	    }
+	}
+	return *pdata;
+}
+
+void processCommand(unsigned char Command_type_id, char* arg ,unsigned char arg_len)
+{
+	printf("Command_type_id=%d\n",Command_type_id);
+	printf("arg_len=%d\n",arg_len);
+	int i;
+	for(i=0;i<arg_len;i++){
+		printf("0x%X ", arg[i]);
+	}
+	printf("\n");
+	//
+}
+
+char param[256];
 void *process_msg_in(void *arg)
 {
 	 int s;
@@ -143,16 +172,34 @@ void *process_msg_in(void *arg)
     {
     	//set cancel interrupt point
     	pthread_testcancel();
-    	unsigned char* pdata;
-    	unsigned int tail = getNextData(pmsg_in, &pdata);
-    	if (pdata){
-    		printf("data[%d]=0x%X\n",(tail-1)&(RINGBUF_MAX_LENGTH-1),*pdata);
-    		//
-    		// Process message here
-
-    		//
+    	char checksum = 0xFF;
+    	do{
+    	}while(polling_data() != 0xEA);
+    	checksum -= 0xEA;
+    	unsigned char Command_type_id = polling_data();
+    	checksum -= Command_type_id;
+    	//printf("Command_type_id: %d\r\n",Command_type_id);
+    	unsigned char len = polling_data();
+    	checksum -= len;
+    	// Check len if make sense
+    	if (len > 16){
+    		printf("Check len=%d error, should not longer than 16, skip this\r\n", len);
+    		continue;
     	}
-    	Sleep(1);
+    	//printf("len: %d\r\n",len);
+    	int i;
+    	for (i=0;i<len;i++){
+    		param[i] = polling_data();
+    		checksum -= param[i];
+    	}
+    	char crc = polling_data();
+    	if (crc != checksum){
+    		printf("Checksum error, skip this\r\n");
+    		printf("read crc=0x%X, should be 0x%X\r\n",crc,checksum);
+    		continue;
+    	}
+    	// Pass command_type id and param[] and len
+    	processCommand(Command_type_id, param, len);
     }
     //pthread_exit((void *)1234);
     return NULL;
@@ -197,7 +244,7 @@ void send_message(char* buf,unsigned int len){
 		crc -= buf[i];
 	}
 	//push crc
-	printf("Push crc: 0x%X \n",crc);
+	//printf("Push crc: 0x%X \n",crc);
 	while (!pushElement(&message_out_ringbuf,crc)) {
 		Sleep(1);
 	}
@@ -252,7 +299,9 @@ int main(void) {
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+	// read HID data and push into message_in_ringbuf
 	pthread_create(&msg_read_handle, &attr, message_read,  (void*)usbhandle);
+	// Process message_in_ringbuf and parse command
 	pthread_create(&process_msg_in_handle, &attr, process_msg_in,  (void*)&message_in_ringbuf);
 	pthread_create(&msg_write_handle, &attr, message_write,  (void*)usbhandle);
 
