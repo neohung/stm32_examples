@@ -220,41 +220,135 @@ unsigned char polling_data(void)
 {
 	static queue_element_t *e;
 	unsigned int tail;
-	do{
+	while(1){
 	    tail = getNextQueueData(&data_in, &e);
 	    if (e) {
 	    	break;
 	    }else{
 	    	osDelay(5);
 	    }
-	}while(1);
+	};
 	return e->data[0];
 }
 
 volatile osThreadId thread3_id = NULL;
+volatile osThreadId thread4_id = NULL;
 extern __IO uint32_t uwTick;
+
+
+void send_message(char* buf,unsigned int len){
+	unsigned int i;
+	char crc = 0xFF;
+	// Pushh Magic Number
+	queue_element_t elem;
+	elem.data[0] = 0xEA;
+	elem.len = 1;
+	while (!pushQueueElement(&data_out,  elem)) {
+		osDelay(5);
+	}
+	crc -= 0xEA;
+	//
+	for(i=0;i<len;i++){
+		elem.data[0] = buf[i];
+		while (!pushQueueElement(&data_out,  elem)) {
+				osDelay(5);
+		}
+		crc -= buf[i];
+	}
+	//push crc
+	printf("Push crc: 0x%X \n",crc);
+	elem.data[0] = crc;
+	while (!pushQueueElement(&data_out,  elem)) {
+			osDelay(5);
+	}
+	//
+}
+
+void processCommand(unsigned char Command_type_id, char* arg ,unsigned char arg_len)
+{
+	printf("Command_type_id=%d\r\n",Command_type_id);
+	printf("arg_len=%d\r\n",arg_len);
+	int i;
+	for(i=0;i<arg_len;i++){
+		printf("0x%X ", arg[i]);
+	}
+	printf("\r\n");
+	//
+	char str[6];
+	int linear_speed = 0x0201;
+	int angular_speed = 0x0403;
+	str[0] = 0x01;  // command type id
+	str[1] = 0x4;  // len
+	str[2] = linear_speed & 0xFF;
+	str[3] = (linear_speed >> 8) & 0xFF;
+	str[4] = angular_speed & 0xFF;
+	str[5] = (angular_speed >> 8)& 0xFF;
+	send_message(str, sizeof(str));
+}
+
+static void process_data_out(void const *arg)
+{
+     //printf("test\r\n");
+	 while(1)
+	 {
+		 static queue_element_t *e = 0;
+		 	unsigned int tail;
+		 	while(1){
+		 	    tail = getNextQueueData(&data_out, &e);
+		 	    if (e) {
+		 	    	break;
+		 	    }else{
+		 	    	osDelay(5);
+		 	    }
+		 	};
+		 	 //e->data[0];
+		 	customerHID.data = e->data[0];
+		 	USBD_HID_SendReport(&USB_OTG_dev, &customerHID, sizeof(struct customerHID_t));
+		 	osDelay(5);
+	 }
+}
 
 char param[256];
 static void process_data_in(void const *arg)
 {
      //printf("test\r\n");
-     char checksum = 0xFF;
-     do{
-     }while(polling_data() == 0xEA);
-     checksum -= 0xEA;
-     unsigned char Command_type_id = polling_data();
-     checksum -= Command_type_id;
-     unsigned char len = polling_data();
-     int i;
-     for (i=0;i<len;i++){
-    	 param[i] = polling_data();
-    	 checksum -= param[i];
-     }
-     if (polling_data() != checksum){
-    	 printf("Checksum error, skip this\n");
-     }
-     // Pass command_type id and param[] and len
-     //
+	 while(1)
+	 {
+		  char checksum = 0xFF;
+		  do{
+		  }while(polling_data() != 0xEA);
+		  checksum -= 0xEA;
+		  unsigned char Command_type_id = polling_data();
+		  checksum -= Command_type_id;
+		  //printf("Command_type_id: %d\r\n",Command_type_id);
+		  unsigned char len = polling_data();
+		  checksum -= len;
+		  // Check len if make sense
+		  if (len > 16){
+			 printf("Check len=%d error, should not longer than 16, skip this\r\n", len);
+			 continue;
+		  }
+		     //
+		  //printf("len: %d\r\n",len);
+		  int i;
+		  for (i=0;i<len;i++){
+			  param[i] = polling_data();
+			  checksum -= param[i];
+		  }
+		  char crc = polling_data();
+		  if (crc != checksum){
+			  printf("Checksum error, skip this\r\n");
+			  printf("read crc=0x%X, should be 0x%X\r\n",crc,checksum);
+			  continue;
+		  }
+		  // Pass command_type id and param[] and len
+		  processCommand(Command_type_id, param, len);
+		  //
+	 }
+
+	/*
+
+      */
      /*
 	 while(1)
 	 {
@@ -301,6 +395,9 @@ static void mainThread(void const *arg)
 
 	 osThreadDef(USER_Thread_process_data_in, process_data_in, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
 	 thread3_id = osThreadCreate(osThread(USER_Thread_process_data_in), NULL);
+	 osThreadDef(USER_Thread_process_data_out, process_data_out, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
+	 thread4_id = osThreadCreate(osThread(USER_Thread_process_data_out), NULL);
+
 	 vTaskDelete( NULL );
 }
 

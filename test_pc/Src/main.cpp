@@ -149,6 +149,7 @@ void *process_msg_in(void *arg)
     		printf("data[%d]=0x%X\n",(tail-1)&(RINGBUF_MAX_LENGTH-1),*pdata);
     		//
     		// Process message here
+
     		//
     	}
     	Sleep(1);
@@ -196,6 +197,7 @@ void send_message(char* buf,unsigned int len){
 		crc -= buf[i];
 	}
 	//push crc
+	printf("Push crc: 0x%X \n",crc);
 	while (!pushElement(&message_out_ringbuf,crc)) {
 		Sleep(1);
 	}
@@ -217,12 +219,12 @@ void *thread2(void *arg)
 		    case 'a':
 		    {
 		    	char str[6];
-		    	int linear_speed = 100;
-		    	int angular_speed = 180;
+		    	int linear_speed = 0x0201;
+		    	int angular_speed = 0x0403;
 		    	str[0] = 0x01;  // command type id
 		    	str[1] = 0x4;  // len
 		    	str[2] = linear_speed & 0xFF;
-		    	str[3] = (linear_speed >> 8) & 0xFF;;
+		    	str[3] = (linear_speed >> 8) & 0xFF;
 		    	str[4] = angular_speed & 0xFF;
 		    	str[5] = (angular_speed >> 8)& 0xFF;
 		    	send_message(str, sizeof(str));
