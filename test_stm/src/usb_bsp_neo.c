@@ -21,12 +21,16 @@
   */ 
 
 /* Includes ------------------------------------------------------------------*/
+#include <stdio.h>
+#include "cmsis_os.h"
 #include "usb_bsp.h"
 #include "usbd_conf.h"
 #include "stm32f4xx_conf.h"
 #include "usbd_def.h"
 
 #include "usbd_core.h" // for USB_OTG_CONFIGURED, USBD_OK
+#include "usbd_ioreq.h" // for USBD_CtlSebdData
+#include "usbd_req.h" // for USBD_CtlError
 #include "queue.h"
 extern queue_t data_in;
 //extern uint8_t Buffer[];
@@ -511,7 +515,7 @@ static uint8_t  USBD_HID_Setup (void  *pdev,
 		      case HID_REQ_SET_IDLE:
 		    	USBD_HID_IdleState = 0;
 		    	USBD_HID_IdleState = (uint8_t)(req->wValue >> 8);
-		    	printf("USBD_HID_IdleState=%d\r\n",USBD_HID_IdleState);
+		    	//printf("USBD_HID_IdleState=%d\r\n",USBD_HID_IdleState);
 		    	break;
 			  default:
 		      USBD_CtlError (pdev, req);

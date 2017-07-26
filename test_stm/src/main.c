@@ -123,9 +123,10 @@ static void Thread2(void const *arg)
 unsigned char polling_data(void)
 {
 	static queue_element_t *e;
-	unsigned int tail;
+	//unsigned int tail;
 	while(1){
-	    tail = getNextQueueData(&data_in, &e);
+	    //tail =
+	    getNextQueueData(&data_in, &e);
 	    if (e) {
 	    	break;
 	    }else{
@@ -167,15 +168,16 @@ void send_message(char* buf,unsigned int len){
 
 static void process_data_out(void const *arg)
 {
-	 queue_element_t *e = 0;
+	 //queue_element_t *e = 0;
 	 unsigned char* pdata;
-	 unsigned int tail;
+	 //unsigned int tail;
 	 while(1)
 	 {
 		 //printf("process_data_out\r\n");
-		 e = 0;
+		 //e = 0;
 		 	while(1){
-		 		tail = getNextData(&data_out, &pdata);
+		 		//tail =
+		 		getNextData(&data_out, &pdata);
 		 	    if (pdata) {
 		 	    	break;
 		 	    }else{
@@ -183,7 +185,7 @@ static void process_data_out(void const *arg)
 		 	    }
 		 	};
 		 	customerHID.data = *pdata;
-		 	USBD_HID_SendReport(&USB_OTG_dev, &customerHID, sizeof(struct customerHID_t));
+		 	USBD_HID_SendReport(&USB_OTG_dev, (uint8_t*) &customerHID, sizeof(struct customerHID_t));
 		 	osDelay(1);
 	 }
 }
@@ -274,12 +276,13 @@ OiCmdDispatcher oiOpChecker[] =
 
 static void process_command(void const *arg)
 {
-	unsigned int tail;
+	//unsigned int tail;
 	queue_element_t *e = 0;
 	while(1)
 	{
 		  e=0;
-		  tail = getNextQueueData(&commands, &e);
+		  //tail =
+		  getNextQueueData(&commands, &e);
 		  if (e) {
 			  int i;
 			  for(i=0;i<NUMBER_SUPPORTED_OI_CMD;i++)

@@ -16,7 +16,7 @@ unsigned int pushElement(ringbuf_t *r, unsigned char data)
 		return 0; // ring buffer overflow
 	}
 	r->data[r->head] = data;
-	r->head = ++r->head & (RINGBUF_MAX_LENGTH - 1);
+	r->head = (r->head + 1) & (RINGBUF_MAX_LENGTH - 1);
 	//printf("ringbuf: pushElement len=%d\n",r->len+1);
 	return ++r->len;
 }
@@ -27,7 +27,7 @@ unsigned int getNextData(ringbuf_t *r, unsigned char **ppdata)
 	//unsigned char tail = r->tail;
 	if (r->len >0) {
 		*ppdata= &r->data[r->tail];
-		r->tail = ++r->tail & (RINGBUF_MAX_LENGTH - 1);
+		r->tail = (r->tail + 1) & (RINGBUF_MAX_LENGTH - 1);
 		r->len--;
 		return r->tail;
 	}

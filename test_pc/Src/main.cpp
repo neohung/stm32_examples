@@ -201,7 +201,7 @@ OiCmdDispatcher oiOpChecker[] =
 
 void processCommand(unsigned char Command_type_id, char* arg ,unsigned char arg_len)
 {
-	int i;
+	unsigned int i;
 	/*
 	printf("Command_type_id=%d\n",Command_type_id);
 	printf("arg_len=%d\n",arg_len);

@@ -1,4 +1,5 @@
 #include <queue.h>
+#include <stdio.h>
 
 void queueInit(queue_t *q)
 {
@@ -19,16 +20,17 @@ unsigned int pushQueueElement(queue_t *q, queue_element_t elem)
 	for(i=0;i<q->queue[q->head].len;i++){
 		q->queue[q->head].data[i] = elem.data[i];
 	}
-	q->head = ++q->head & (NUM_INPUT_QUEUES - 1);
+
+	q->head = (q->head + 1) & (NUM_INPUT_QUEUES - 1);
 	return ++q->len;
 }
 //return tail, -1 means no element;
 unsigned int getNextQueueData(queue_t *q, queue_element_t **e)
 {
-	unsigned char tail = q->tail;
+	//unsigned char tail = q->tail;
 	if (q->len >0) {
 		*e= &q->queue[q->tail];
-		q->tail = ++q->tail & (NUM_INPUT_QUEUES - 1);
+		q->tail = (q->tail+1) & (NUM_INPUT_QUEUES - 1);
 		q->len--;
 		return q->tail;
 	}
