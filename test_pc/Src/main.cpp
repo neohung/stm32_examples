@@ -356,8 +356,8 @@ void *thread2(void *arg)
 		    case 'a': //OI_OPCODE_MOTORCONTROL
 		    {
 		    	char str[6];
-		    	int linear_speed = 0x0201;
-		    	int angular_speed = 0x0403;
+		    	int linear_speed = 100;
+		    	int angular_speed = 0;
 		    	str[0] = OI_OPCODE_MOTORCONTROL;  // command type id
 		    	str[1] = 0x4;  // len
 		    	str[2] = linear_speed & 0xFF;
@@ -367,6 +367,20 @@ void *thread2(void *arg)
 		    	send_message(str, sizeof(str));
 		    }
 		    	break;
+		    case 's': //OI_OPCODE_MOTORCONTROL stop
+		   		    {
+		   		    	char str[6];
+		   		    	int linear_speed = 0;
+		   		    	int angular_speed = 0;
+		   		    	str[0] = OI_OPCODE_MOTORCONTROL;  // command type id
+		   		    	str[1] = 0x4;  // len
+		   		    	str[2] = linear_speed & 0xFF;
+		   		    	str[3] = (linear_speed >> 8) & 0xFF;
+		   		    	str[4] = angular_speed & 0xFF;
+		   		    	str[5] = (angular_speed >> 8)& 0xFF;
+		   		    	send_message(str, sizeof(str));
+		   		    }
+		   		    	break;
 		    case 'b': //OI_OPCODE_QUERY
 		    {
 		    	char str[2];

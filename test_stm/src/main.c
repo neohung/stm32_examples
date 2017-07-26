@@ -32,6 +32,177 @@ __ALIGN_BEGIN USB_OTG_CORE_HANDLE  USB_OTG_dev __ALIGN_END;
 // Private function prototypes
 void Delay(volatile uint32_t nCount);
 
+void ledpwm_init(void)
+{
+	//Enable GPIOD Clock
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
+	//Init GPIO PD12
+	GPIO_InitTypeDef gpioStructure;
+	gpioStructure.GPIO_Pin = GPIO_Pin_12;
+	gpioStructure.GPIO_Mode = GPIO_Mode_AF;
+	gpioStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIOD, &gpioStructure);
+	//Enable TIM4
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
+	//Init TIM4 Timer
+	TIM_TimeBaseInitTypeDef timerInitStructure;
+	timerInitStructure.TIM_Prescaler = 40000;
+	timerInitStructure.TIM_CounterMode = TIM_CounterMode_Up;
+	timerInitStructure.TIM_Period = 500;
+	timerInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
+	timerInitStructure.TIM_RepetitionCounter = 0;
+	TIM_TimeBaseInit(TIM4, &timerInitStructure);
+	TIM_Cmd(TIM4, ENABLE);
+	//
+	TIM_OCInitTypeDef outputChannelInit = {0,};
+	outputChannelInit.TIM_OCMode = TIM_OCMode_PWM1;
+	outputChannelInit.TIM_Pulse = 400;
+	outputChannelInit.TIM_OutputState = TIM_OutputState_Enable;
+	outputChannelInit.TIM_OCPolarity = TIM_OCPolarity_High;
+
+	TIM_OC1Init(TIM4, &outputChannelInit);
+	TIM_OC1PreloadConfig(TIM4, TIM_OCPreload_Enable);
+
+	GPIO_PinAFConfig(GPIOD, GPIO_PinSource12, GPIO_AF_TIM4);
+
+}
+
+void Motor_GPIO_Configuration(void)
+{
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM8, ENABLE);
+
+	GPIO_InitTypeDef GPIO_InitStructure;
+	//
+	//RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB|RCC_APB2Periph_GPIOC, ENABLE);
+	//
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF; //GPIO_Mode_AF
+	GPIO_Init(GPIOC, &GPIO_InitStructure);
+
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF; //GPIO_Mode_AF
+	GPIO_Init(GPIOC, &GPIO_InitStructure);
+
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF; //GPIO_Mode_AF
+	GPIO_Init(GPIOC, &GPIO_InitStructure);
+
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF; //GPIO_Mode_AF
+	GPIO_Init(GPIOC, &GPIO_InitStructure);
+
+	TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
+	TIM_OCInitTypeDef  TIM_OCInitStructure;
+
+	#define MOTOR_PWM_SYSCLK_DIV	0
+	#define MOTOR_PWM_CLK_72MHZ  	1
+
+	//MOTOR_PWM_CLK_36MHZ/¡]MOTOR_PWM_PERIOD+1)
+	unsigned int motor_pwm_period=0;
+	//Setup Period
+	TIM_TimeBaseStructure.TIM_ClockDivision = MOTOR_PWM_SYSCLK_DIV;
+	TIM_TimeBaseStructure.TIM_Prescaler = MOTOR_PWM_CLK_72MHZ;
+	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+	TIM_TimeBaseStructure.TIM_Period = motor_pwm_period;
+	TIM_TimeBaseInit(TIM8, &TIM_TimeBaseStructure);
+	//OC1 PWM
+	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
+	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+	TIM_OCInitStructure.TIM_Pulse = 0;										//PULSE
+	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
+	TIM_OCInitStructure.TIM_OCNPolarity = TIM_OCNPolarity_High;
+	TIM_OCInitStructure.TIM_OCIdleState = TIM_OCIdleState_Set;
+	TIM_OCInitStructure.TIM_OCNIdleState = TIM_OCIdleState_Reset;
+	TIM_OC1Init(TIM8, &TIM_OCInitStructure);
+	//OC2 PWM
+	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+	TIM_OCInitStructure.TIM_Pulse = 0;										//PULSE
+	TIM_OC2Init(TIM8, &TIM_OCInitStructure);
+	//OC3 PWM
+	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+	TIM_OCInitStructure.TIM_Pulse = 0;										//PULSE
+	TIM_OC3Init(TIM8, &TIM_OCInitStructure);
+	//OC4 PWM
+	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+	TIM_OCInitStructure.TIM_Pulse = 0;										//PULSE
+	TIM_OC4Init(TIM8, &TIM_OCInitStructure);
+	//NVIC
+	/*
+	NVIC_InitTypeDef NVIC_InitStructure;
+	NVIC_InitStructure.NVIC_IRQChannel = TIM8_UP_IRQChannel;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
+	*/
+	//Enable TIM8 and PWM
+	TIM_Cmd(TIM8, ENABLE);
+	TIM_CtrlPWMOutputs(TIM8,ENABLE);
+	//
+	TIM_SetCompare4(TIM8,0);
+	TIM_SetCompare2(TIM8,0);
+	TIM_SetCompare1(TIM8,0);
+	TIM_SetCompare3(TIM8,0);
+	//
+}
+
+void InitializeTimer()
+{
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
+
+    TIM_TimeBaseInitTypeDef timerInitStructure;
+    timerInitStructure.TIM_Prescaler = 40000;
+    timerInitStructure.TIM_CounterMode = TIM_CounterMode_Up;
+    timerInitStructure.TIM_Period = 500;
+    timerInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
+    timerInitStructure.TIM_RepetitionCounter = 0;
+    TIM_TimeBaseInit(TIM4, &timerInitStructure);
+    TIM_Cmd(TIM4, ENABLE);
+}
+
+void InitializePWMChannel()
+{
+	TIM_OCInitTypeDef outputChannelInit = {0,};
+	outputChannelInit.TIM_OCMode = TIM_OCMode_PWM1;
+	outputChannelInit.TIM_Pulse = 400;
+	outputChannelInit.TIM_OutputState = TIM_OutputState_Enable;
+	outputChannelInit.TIM_OCPolarity = TIM_OCPolarity_High;
+
+	TIM_OC1Init(TIM4, &outputChannelInit);
+	TIM_OC1PreloadConfig(TIM4, TIM_OCPreload_Enable);
+
+	GPIO_PinAFConfig(GPIOD, GPIO_PinSource12, GPIO_AF_TIM4);
+}
+
+void InitializePWMChannel2()
+{
+	TIM_OCInitTypeDef outputChannelInit = {0,};
+	outputChannelInit.TIM_OCMode = TIM_OCMode_PWM1;
+	outputChannelInit.TIM_Pulse = 100;
+	outputChannelInit.TIM_OutputState = TIM_OutputState_Enable;
+	outputChannelInit.TIM_OCPolarity = TIM_OCPolarity_High;
+
+	TIM_OC2Init(TIM4, &outputChannelInit);
+	TIM_OC2PreloadConfig(TIM4, TIM_OCPreload_Enable);
+
+	GPIO_PinAFConfig(GPIOD, GPIO_PinSource13, GPIO_AF_TIM4);
+}
+
+void InitializeLEDs()
+{
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
+
+    GPIO_InitTypeDef gpioStructure;
+    gpioStructure.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13;
+    gpioStructure.GPIO_Mode = GPIO_Mode_AF;
+    gpioStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(GPIOD, &gpioStructure);
+}
+
 void init() {
 	GPIO_InitTypeDef  GPIO_InitStructure;
 	// ---------- SysTick timer -------- //
@@ -79,6 +250,14 @@ void init() {
     NVIC_InitStruct.NVIC_IRQChannelPreemptionPriority = 0x00;
     NVIC_InitStruct.NVIC_IRQChannelSubPriority = 0x00;
     NVIC_Init(&NVIC_InitStruct);
+    //
+    //Motor_GPIO_Configuration();
+    //ledpwm_init();
+    InitializeLEDs();
+    	InitializeTimer();
+    	InitializePWMChannel();
+    	InitializePWMChannel2();
+    //
 }
 
 #include "hid_report_desc.h"
@@ -289,7 +468,8 @@ static void process_command(void const *arg)
 			  {
 			      if(oiOpChecker[i].opcode == e->data[0])
 			      {
-			    	   GPIO_ToggleBits(GPIOD, GPIO_Pin_12);
+			    	   //green led
+			    	   //GPIO_ToggleBits(GPIOD, GPIO_Pin_12);
 			    	   oiOpChecker[i].func(*e);
 			      }
 			   }
