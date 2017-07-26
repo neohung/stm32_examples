@@ -99,7 +99,7 @@ bool usbhid_read(struct usb_dev_handle* usbhandle, int ep, char* buf, unsigned i
 	}
 }
 
-pthread_t msg_read_handle, process_msg_in_handle, msg_write_handle, Tid2;
+pthread_t msg_read_handle, process_msg_in_handle, msg_write_handle, Tid2, Tid1;
 
 void *message_read(void *arg)
 {
@@ -147,16 +147,77 @@ unsigned char polling_data(void)
 	return *pdata;
 }
 
+
+typedef enum _OI_Opcode {
+	// Command opcodes
+	 OI_OPCODE_MOTORCONTROL  = 1,
+	 OI_OPCODE_ODOMUPDATE = 2,
+	 OI_OPCODE_QUERY = 3,
+	 OI_OPCODE_IMUQUERY = 4,
+	 OI_OPCODE_IMUSTATE = 5,
+} OIOpcode;
+//
+
+typedef void (*OiHandleOpcode_t)(char* arg ,unsigned char arg_len);
+
+typedef struct _OiCmdDispatcher{
+    OIOpcode                opcode;
+    OiHandleOpcode_t        func;
+} OiCmdDispatcher;
+
+void oiProcessOdomUpdate(char* arg ,unsigned char arg_len)
+{
+	int x = arg[0] + (arg[1]<<8);
+	int y = arg[2] + (arg[3]<<8);
+	int theta = arg[4] + (arg[5]<<8);
+	int linear_speed = arg[6] + (arg[7]<<8);
+	int angular_speed = arg[8] + (arg[9]<<8);
+	printf("Process oiProcessOdomUpdate, x=%d,y=%d,theta=%d,ls=%d,as=%d\n",x,y,theta,linear_speed,angular_speed);
+}
+
+void oiProcessIMUState(char* arg ,unsigned char arg_len)
+{
+	//printf("Process oiProcessIMUState\r\n");
+	int yaw = arg[0] + (arg[1]<<8);
+	int pitch = arg[2] + (arg[3]<<8);
+	int roll = arg[4] + (arg[5]<<8);
+	printf("Process oiProcessIMUState, yaw=%d,pitch=%d,roll=%d\n",yaw,pitch,roll);
+}
+
+OiCmdDispatcher oiOpChecker[] =
+{
+  {
+	OI_OPCODE_ODOMUPDATE,
+    oiProcessOdomUpdate,
+  },
+  {
+	 OI_OPCODE_IMUSTATE,
+     oiProcessIMUState,
+   },
+};
+
+#define NUMBER_SUPPORTED_OI_CMD sizeof(oiOpChecker)/sizeof(struct _OiCmdDispatcher)
+//------------------------------------
+
 void processCommand(unsigned char Command_type_id, char* arg ,unsigned char arg_len)
 {
+	int i;
+	/*
 	printf("Command_type_id=%d\n",Command_type_id);
 	printf("arg_len=%d\n",arg_len);
-	int i;
 	for(i=0;i<arg_len;i++){
 		printf("0x%X ", arg[i]);
 	}
 	printf("\n");
+	*/
 	//
+	for(i=0;i<NUMBER_SUPPORTED_OI_CMD;i++)
+	{
+		if(oiOpChecker[i].opcode == Command_type_id)
+		{
+			oiOpChecker[i].func(arg, arg_len);
+		}
+	}
 }
 
 char param[256];
@@ -230,9 +291,13 @@ void *message_write(void *arg)
 	}
 }
 
+//MUTEX
+pthread_mutex_t mutex_send_message=PTHREAD_MUTEX_INITIALIZER;
 void send_message(char* buf,unsigned int len){
 	unsigned int i;
 	char crc = 0xFF;
+	//int pthread_mutex_trylock(pthread_mutex_t *mutex)
+	pthread_mutex_lock(&mutex_send_message);
 	// Pushh Magic Number
 	while (!pushElement(&message_out_ringbuf,0xEA)) {
 		Sleep(1);
@@ -252,21 +317,29 @@ void send_message(char* buf,unsigned int len){
 	while (!pushElement(&message_out_ringbuf,crc)) {
 		Sleep(1);
 	}
-
+	pthread_mutex_unlock(&mutex_send_message);
 	//
 }
 
 //
+void *send_query_thread(void *arg)
+{
+	while (1)
+	{
+		pthread_testcancel();
+		char str[2];
+		str[0] = OI_OPCODE_QUERY;  // command type id
+		str[1] = 0x0;  // len
+		send_message(str, sizeof(str));
+		Sleep(500);
+		//char str[2];
+		str[0] = OI_OPCODE_IMUQUERY;  // command type id
+		str[1] = 0x0;  // len
+		send_message(str, sizeof(str));
+		Sleep(500);
+	}
+}
 //----------------------------------
-typedef enum _OI_Opcode {
-	// Command opcodes
-	 OI_OPCODE_MOTORCONTROL  = 1,
-	 OI_OPCODE_ODOMUPDATE = 2,
-	 OI_OPCODE_QUERY = 3,
-	 OI_OPCODE_IMUQUERY = 4,
-	 OI_OPCODE_IMUSTATE = 5,
-} OIOpcode;
-//
 
 void *thread2(void *arg)
 {
@@ -276,6 +349,7 @@ void *thread2(void *arg)
 		puts ("A dot ('.') to exit:");
 		do {
 		    c=getch();
+		    //c='c';
 		    //putchar(c);
 		    switch (c)
 		    {
@@ -314,12 +388,13 @@ void *thread2(void *arg)
 		    	send_message(&c,1);
 		    	break;
 		    }
-		    Sleep(1);
+		    Sleep(50);
 		} while (c != '.');
 		printf("Do Cancel\n");
 		pthread_cancel(process_msg_in_handle);
 		pthread_cancel(msg_read_handle);
 		pthread_cancel(msg_write_handle);
+		pthread_cancel(Tid1);
 		pthread_exit(NULL);
 		return NULL;
 }
@@ -338,18 +413,23 @@ int main(void) {
 	pthread_create(&msg_write_handle, &attr, message_write,  (void*)usbhandle);
 	// Process message_in_ringbuf and parse command
 	pthread_create(&process_msg_in_handle, &attr, process_msg_in,  (void*)&message_in_ringbuf);
+
 	pthread_create(&Tid2, &attr, thread2,  (void*)usbhandle);
+
+	pthread_create(&Tid1, &attr, send_query_thread,  (void*)usbhandle);
+
 	void *ret;
 	pthread_join(process_msg_in_handle, &ret);
 	pthread_join(msg_read_handle, &ret);
 	pthread_join(msg_write_handle, &ret);
-
+	pthread_join(Tid1, &ret);
 	pthread_join(Tid2, &ret);
 	printf("Tid2 finish\n");
 	pthread_attr_destroy(&attr);
 	//pthread_kill(Tid1, 9); //SIGKILL
 	puts("Finish");
 	usbhid_stop(usbhandle,0);
+	pthread_mutex_destroy(&mutex_send_message);
 	system("pause");
 	return EXIT_SUCCESS;
 }
