@@ -74,7 +74,7 @@ void usbhid_stop(struct usb_dev_handle* usbhandle, int INTF)
 
 void usbhid_send(struct usb_dev_handle* usbhandle, int ep, char* buf, unsigned int len)
 {
-	const static int timeout=5000; // timeout in ms
+	const static int timeout=1000; // timeout in ms
 	int res = usb_interrupt_write(usbhandle, ep, buf, len, timeout);
 	if( res < 0 )
 	{
@@ -88,11 +88,10 @@ void usbhid_send(struct usb_dev_handle* usbhandle, int ep, char* buf, unsigned i
 
 bool usbhid_read(struct usb_dev_handle* usbhandle, int ep, char* buf, unsigned int len)
 {
-	const int data_len=255;
-	const int timeout = 100;
-	char data[data_len];
 	int res;
-	res = usb_interrupt_read(usbhandle, ep, buf, len, timeout);
+	pthread_testcancel();
+	//if (usbhandle)
+	res = usb_interrupt_read(usbhandle, ep, buf, len, 1000);
 	if (res > 0){
 		return true;
 	}else{
@@ -120,7 +119,7 @@ void *message_read(void *arg)
         int len = usbhid_read(usbhandle, MY_EP_In, buf, 1);
         if (len){
         	unsigned buflen = pushElement(&message_in_ringbuf,buf[0]);
-        	if (len==0){
+        	if (buflen==0){
         		printf("Full, can't push to message_in_ringbuf any more\n");
         	}
         }
@@ -133,9 +132,11 @@ void *message_read(void *arg)
 unsigned char polling_data(void)
 {
 	unsigned char* pdata;
-	unsigned int tail;
+	//unsigned int tail;
 	while(1){
-		tail = getNextData(&message_in_ringbuf, &pdata);
+    	pthread_testcancel();
+		//tail =
+		getNextData(&message_in_ringbuf, &pdata);
 	    if (pdata){
 	    		//printf("data[%d]=0x%X\n",(tail-1)&(RINGBUF_MAX_LENGTH-1),*pdata);
 	    		break;
@@ -167,7 +168,7 @@ void *process_msg_in(void *arg)
 		 printf("pthread_setcancelstate error\n");
 		 exit(EXIT_FAILURE);
 	 }
-	 ringbuf_t* pmsg_in = (ringbuf_t*)arg;
+	// ringbuf_t* pmsg_in = (ringbuf_t*)arg;
     while (1)
     {
     	//set cancel interrupt point
@@ -219,7 +220,8 @@ void *message_write(void *arg)
 	{
 		pthread_testcancel();
 		unsigned char* pdata;
-		unsigned int tail = getNextData(&message_out_ringbuf, &pdata);
+		//unsigned int tail =
+				getNextData(&message_out_ringbuf, &pdata);
 		if (pdata){
 	    		//printf("write data[%d]=[%c]\n",(tail-1)&(RINGBUF_MAX_LENGTH-1),*pdata);
 	    		usbhid_send(usbhandle, MY_EP_Out, (char*)pdata, 1);
@@ -235,40 +237,54 @@ void send_message(char* buf,unsigned int len){
 	while (!pushElement(&message_out_ringbuf,0xEA)) {
 		Sleep(1);
 	}
+
 	crc -= 0xEA;
-	//
+	//len
 	for(i=0;i<len;i++){
 		while (!pushElement(&message_out_ringbuf,buf[i])) {
 			Sleep(1);
 		}
 		crc -= buf[i];
 	}
+
 	//push crc
 	//printf("Push crc: 0x%X \n",crc);
 	while (!pushElement(&message_out_ringbuf,crc)) {
 		Sleep(1);
 	}
+
 	//
 }
 
+//
+//----------------------------------
+typedef enum _OI_Opcode {
+	// Command opcodes
+	 OI_OPCODE_MOTORCONTROL  = 1,
+	 OI_OPCODE_ODOMUPDATE = 2,
+	 OI_OPCODE_QUERY = 3,
+	 OI_OPCODE_IMUQUERY = 4,
+	 OI_OPCODE_IMUSTATE = 5,
+} OIOpcode;
+//
+
 void *thread2(void *arg)
 {
-		struct usb_dev_handle* usbhandle = (struct usb_dev_handle*)arg;
-		int MY_EP_Out = 0x01;
+		//struct usb_dev_handle* usbhandle = (struct usb_dev_handle*)arg;
+		//int MY_EP_Out = 0x01;
 		char c;
-		puts ("Enter text. Include a dot ('.') in a sentence to exit:");
+		puts ("A dot ('.') to exit:");
 		do {
 		    c=getch();
 		    //putchar(c);
-		    //usbhid_send(usbhandle, MY_EP_Out, &c, 1);
 		    switch (c)
 		    {
-		    case 'a':
+		    case 'a': //OI_OPCODE_MOTORCONTROL
 		    {
 		    	char str[6];
 		    	int linear_speed = 0x0201;
 		    	int angular_speed = 0x0403;
-		    	str[0] = 0x01;  // command type id
+		    	str[0] = OI_OPCODE_MOTORCONTROL;  // command type id
 		    	str[1] = 0x4;  // len
 		    	str[2] = linear_speed & 0xFF;
 		    	str[3] = (linear_speed >> 8) & 0xFF;
@@ -277,6 +293,23 @@ void *thread2(void *arg)
 		    	send_message(str, sizeof(str));
 		    }
 		    	break;
+		    case 'b': //OI_OPCODE_QUERY
+		    {
+		    	char str[2];
+		    	str[0] = OI_OPCODE_QUERY;  // command type id
+		    	str[1] = 0x0;  // len
+		    	send_message(str, sizeof(str));
+		    }
+		    	break;
+		    case 'c': //OI_OPCODE_IMUQUERY
+		   	{
+		   		char str[2];
+		   		str[0] = OI_OPCODE_IMUQUERY;  // command type id
+		   		str[1] = 0x0;  // len
+		   		send_message(str, sizeof(str));
+		   	}
+		   		break;
+
 		    default:
 		    	send_message(&c,1);
 		    	break;
@@ -284,10 +317,11 @@ void *thread2(void *arg)
 		    Sleep(1);
 		} while (c != '.');
 		printf("Do Cancel\n");
-		pthread_cancel(msg_read_handle);
 		pthread_cancel(process_msg_in_handle);
+		pthread_cancel(msg_read_handle);
 		pthread_cancel(msg_write_handle);
 		pthread_exit(NULL);
+		return NULL;
 }
 
 int main(void) {
@@ -301,15 +335,15 @@ int main(void) {
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 	// read HID data and push into message_in_ringbuf
 	pthread_create(&msg_read_handle, &attr, message_read,  (void*)usbhandle);
+	pthread_create(&msg_write_handle, &attr, message_write,  (void*)usbhandle);
 	// Process message_in_ringbuf and parse command
 	pthread_create(&process_msg_in_handle, &attr, process_msg_in,  (void*)&message_in_ringbuf);
-	pthread_create(&msg_write_handle, &attr, message_write,  (void*)usbhandle);
-
 	pthread_create(&Tid2, &attr, thread2,  (void*)usbhandle);
 	void *ret;
-	pthread_join(msg_read_handle, &ret);
 	pthread_join(process_msg_in_handle, &ret);
+	pthread_join(msg_read_handle, &ret);
 	pthread_join(msg_write_handle, &ret);
+
 	pthread_join(Tid2, &ret);
 	printf("Tid2 finish\n");
 	pthread_attr_destroy(&attr);

@@ -19,8 +19,12 @@
 #include "usb_core.h" //in USB_OTG
 
 #include "queue.h"
+
+#include "ringbuf.h"
 queue_t data_in;
-queue_t data_out;
+//queue_t data_out;
+queue_t commands;
+ringbuf_t data_out;
 
 
 __ALIGN_BEGIN USB_OTG_CORE_HANDLE  USB_OTG_dev __ALIGN_END;
@@ -79,10 +83,6 @@ void init() {
 
 #include "hid_report_desc.h"
 extern uint8_t USBD_HID_SendReport(USB_OTG_CORE_HANDLE  *pdev, uint8_t *report,uint16_t len);
-struct keyboardHID_t keyboardHID;
-struct mouseHID_t mouseHID;
-struct joystickHID_t joystickHID1;
-struct joystickHID_t joystickHID2;
 struct customerHID_t customerHID;
 volatile int is_user_button_press = 0;
 void delay(int i)
@@ -103,91 +103,6 @@ void EXTI0_IRQHandler(void)
 	}
 
 }
-
-void send_win_and_r_key(void)
-{
-			  keyboardHID.id = 1;
-			  keyboardHID.modifier = 0;
-			  keyboardHID.keycodes[0] = 0;
-			  keyboardHID.keycodes[1] = 0;
-			  keyboardHID.keycodes[2] = 0;
-			  keyboardHID.keycodes[3] = 0;
-			  keyboardHID.keycodes[4] = 0;
-			  keyboardHID.keycodes[5] = 0;
-			  keyboardHID.modifier = USB_HID_MODIFIER_LEFT_GUI;
-			  keyboardHID.keycodes[0] = USB_HID_KEY_R;
-			  USBD_HID_SendReport(&USB_OTG_dev, &keyboardHID, sizeof(struct keyboardHID_t));
-			  osDelay(30);
-			  keyboardHID.modifier = 0;
-			  keyboardHID.keycodes[0] = 0;
-			  USBD_HID_SendReport(&USB_OTG_dev, &keyboardHID, sizeof(struct keyboardHID_t));
-}
-
-void send_mouse(void)
-{
-	//Move Mouse to Right Up
-	mouseHID.id = 2;
-	mouseHID.buttons = 0;
-	mouseHID.x = 10;
-	mouseHID.y = -10;
-	mouseHID.wheel = 0;
-	USBD_HID_SendReport(&USB_OTG_dev, &mouseHID, sizeof(struct mouseHID_t));
-}
-
-void send_joystick1(void)
-{
-	joystickHID1.id = 3;
-	joystickHID1.left_analog_x = 0;
-	joystickHID1.left_analog_y = 0;
-	joystickHID1.right_analog_x = 0;
-	joystickHID1.right_analog_y = 0;
-	joystickHID1.buttons[0] = 0;
-	joystickHID1.buttons[1] = 0;
-	//
-	joystickHID1.buttons[0] = 0xFF;
-	joystickHID1.left_analog_x = 127;
-	joystickHID1.left_analog_y = 127;
-	joystickHID1.right_analog_x = 127;
-	joystickHID1.right_analog_y = 127;
-	USBD_HID_SendReport(&USB_OTG_dev, &joystickHID1, sizeof(struct joystickHID_t));
-	osDelay(100);
-	joystickHID1.buttons[0] = 0;
-	joystickHID1.left_analog_x = 0;
-	joystickHID1.left_analog_y = 0;
-	joystickHID1.right_analog_x = 0;
-	joystickHID1.right_analog_y = 0;
-	USBD_HID_SendReport(&USB_OTG_dev, &joystickHID1, sizeof(struct joystickHID_t));
-}
-void send_joystick2(void)
-{
-		joystickHID2.id = 4;
-		joystickHID2.left_analog_x = 0;
-		joystickHID2.left_analog_y = 0;
-		joystickHID2.right_analog_x = 0;
-		joystickHID2.right_analog_y = 0;
-		joystickHID2.buttons[0] = 0;
-		joystickHID2.buttons[1] = 0;
-		//
-		joystickHID2.buttons[1] = 0XFF ;
-		joystickHID2.left_analog_x = -127;
-		joystickHID2.left_analog_y = -127;
-		joystickHID2.right_analog_x = -127;
-		joystickHID2.right_analog_y = -127;
-		USBD_HID_SendReport(&USB_OTG_dev, &joystickHID2, sizeof(struct joystickHID_t));
-		osDelay(100);
-		joystickHID2.buttons[1] = 0;
-		joystickHID2.left_analog_x = 0;
-		joystickHID2.left_analog_y = 0;
-		joystickHID2.right_analog_x = 0;
-		joystickHID2.right_analog_y = 0;
-		USBD_HID_SendReport(&USB_OTG_dev, &joystickHID2, sizeof(struct joystickHID_t));
-}
-
-void send_customer(void)
-{
-	customerHID.data = 0x12;
-	USBD_HID_SendReport(&USB_OTG_dev, &customerHID, sizeof(struct customerHID_t));
-}
 volatile osThreadId thread2_id = NULL;
 
 static void Thread2(void const *arg)
@@ -196,21 +111,10 @@ static void Thread2(void const *arg)
 	 {
 	   GPIO_SetBits(GPIOD, GPIO_Pin_13);
 	   osDelay(250);
-	   //printf("Thread2\r\n");
-		//
-
 		if (is_user_button_press){
-			//send_win_and_r_key();
-			//send_mouse();
-			//send_customer();
-			//send_joystick1();
-			//send_joystick2();
 		 is_user_button_press = 0;
-
 		  GPIO_ResetBits(GPIOD, GPIO_Pin_14);
 		}
-
-		// osDelay(20);
 	  GPIO_ResetBits(GPIOD, GPIO_Pin_13);
 	   osDelay(250);
 	 }
@@ -225,7 +129,7 @@ unsigned char polling_data(void)
 	    if (e) {
 	    	break;
 	    }else{
-	    	osDelay(20);
+	    	osDelay(1);
 	    }
 	};
 	return e->data[0];
@@ -233,6 +137,7 @@ unsigned char polling_data(void)
 
 volatile osThreadId thread3_id = NULL;
 volatile osThreadId thread4_id = NULL;
+volatile osThreadId thread5_id = NULL;
 extern __IO uint32_t uwTick;
 
 
@@ -240,87 +145,163 @@ void send_message(char* buf,unsigned int len){
 	unsigned int i;
 	char crc = 0xFF;
 	// Pushh Magic Number
-	queue_element_t elem;
-	elem.data[0] = 0xEA;
-	elem.len = 1;
-	while (!pushQueueElement(&data_out,  elem)) {
+	while (!pushElement(&data_out,0xEA)) {
 		osDelay(1);
 	}
+	//}while(!pushQueueElement(&data_out,  elem));
 	crc -= 0xEA;
 	//
 	for(i=0;i<len;i++){
-		elem.data[0] = buf[i];
-		while (!pushQueueElement(&data_out,  elem)) {
+		while (!pushElement(&data_out,buf[i])) {
 				osDelay(1);
 		}
 		crc -= buf[i];
 	}
 	//push crc
 	//printf("Push crc: 0x%X \n",crc);
-	elem.data[0] = crc;
-	while (!pushQueueElement(&data_out,  elem)) {
-			osDelay(1);
-	}
-	//
-}
-
-void processCommand(unsigned char Command_type_id, char* arg ,unsigned char arg_len)
-{
-	printf("Command_type_id=%d\r\n",Command_type_id);
-	printf("arg_len=%d\r\n",arg_len);
-	int i;
-	for(i=0;i<arg_len;i++){
-		printf("0x%X ", arg[i]);
-	}
-	printf("\r\n");
-	//
-	char str[6];
-	int linear_speed = 0x0201;
-	int angular_speed = 0x0403;
-	str[0] = 0x01;  // command type id
-	str[1] = 0x4;  // len
-	str[2] = linear_speed & 0xFF;
-	str[3] = (linear_speed >> 8) & 0xFF;
-	str[4] = angular_speed & 0xFF;
-	str[5] = (angular_speed >> 8)& 0xFF;
-	send_message(str, sizeof(str));
+	while (!pushElement(&data_out,crc)) {
+					osDelay(1);
+				}
+	//osDelay(15);
 }
 
 static void process_data_out(void const *arg)
 {
-     //printf("test\r\n");
-	 //static queue_element_t *e = 0;
 	 queue_element_t *e = 0;
+	 unsigned char* pdata;
 	 unsigned int tail;
 	 while(1)
 	 {
 		 //printf("process_data_out\r\n");
 		 e = 0;
-
-		 	//unsigned int tail;
 		 	while(1){
-		 	    tail = getNextQueueData(&data_out, &e);
-		 	    if (e) {
+		 		tail = getNextData(&data_out, &pdata);
+		 	    if (pdata) {
 		 	    	break;
 		 	    }else{
 		 	    	osDelay(1);
 		 	    }
 		 	};
-
-		// tail = getNextQueueData(&data_out, &e);
-		// osDelay(1);
-		 //e->data[0];
-		 	customerHID.data = e->data[0];
-		 	//customerHID.data = 0;
+		 	customerHID.data = *pdata;
 		 	USBD_HID_SendReport(&USB_OTG_dev, &customerHID, sizeof(struct customerHID_t));
-		 	//osDelay(100);
+		 	osDelay(1);
 	 }
+}
+//----------------------------------
+typedef enum _OI_Opcode {
+	// Command opcodes
+	 OI_OPCODE_MOTORCONTROL  = 1,
+	 OI_OPCODE_ODOMUPDATE = 2,
+	 OI_OPCODE_QUERY = 3,
+	 OI_OPCODE_IMUQUERY = 4,
+	 OI_OPCODE_IMUSTATE = 5,
+} OIOpcode;
+
+//------------------------------------
+static char str[12];
+
+void oiProcessQuery(queue_element_t e)
+{
+	printf("Process Odom Query\r\n");
+	int x = 0x0001; //mm
+	int y = 0x0002; //mm
+	int theta = 0x0003; //degree 0~360
+	int linear_speed = 0x0004; //mm
+	int angular_speed = 0x0005; //mm
+	str[0] = OI_OPCODE_ODOMUPDATE;  // command type id
+	str[1] = 10;  // len
+	str[2] = x & 0xFF;
+	str[3] = (x >> 8) & 0xFF;
+	str[4] = y & 0xFF;
+	str[5] = (y >> 8)& 0xFF;
+	str[6] = theta & 0xFF;
+	str[7] = (theta >> 8) & 0xFF;
+	str[8] = linear_speed & 0xFF;
+	str[9] = (linear_speed >> 8) & 0xFF;
+	str[10] = angular_speed & 0xFF;
+	str[11] = (angular_speed >> 8)& 0xFF;
+	send_message(str, sizeof(str));
+
+}
+void oiProcessMotorControl(queue_element_t e)
+{
+	printf("Process Motor Control\r\n");
+}
+void oiProcessIMUQuery(queue_element_t e)
+{
+	printf("Process IMU Query\r\n");
+		char str[8];
+		int yaw = 0x0001; //-180~180
+		int pitch = 0x0002; //-180~180
+		int roll = 0x0003; //-180~180
+		str[0] = OI_OPCODE_IMUSTATE;  // command type id
+		str[1] = 6;  // len
+		str[2] = yaw & 0xFF;
+		str[3] = (yaw >> 8) & 0xFF;
+		str[4] = pitch & 0xFF;
+		str[5] = (pitch >> 8)& 0xFF;
+		str[6] = roll & 0xFF;
+		str[7] = (roll >> 8)& 0xFF;
+		send_message(str, sizeof(str));
+}
+//------------------------------------
+typedef void (*OiHandleOpcode_t)(queue_element_t e);
+
+typedef struct _OiCmdDispatcher{
+    OIOpcode                opcode;
+    OiHandleOpcode_t        func;
+} OiCmdDispatcher;
+
+OiCmdDispatcher oiOpChecker[] =
+{
+  {
+	OI_OPCODE_MOTORCONTROL,
+    oiProcessMotorControl,
+  },
+  {
+     OI_OPCODE_QUERY,
+     oiProcessQuery,
+   },
+   {
+	 OI_OPCODE_IMUQUERY,
+     oiProcessIMUQuery,
+   },
+};
+
+#define NUMBER_SUPPORTED_OI_CMD sizeof(oiOpChecker)/sizeof(struct _OiCmdDispatcher)
+//------------------------------------
+
+
+static void process_command(void const *arg)
+{
+	unsigned int tail;
+	queue_element_t *e = 0;
+	while(1)
+	{
+		  e=0;
+		  tail = getNextQueueData(&commands, &e);
+		  if (e) {
+			  int i;
+			  for(i=0;i<NUMBER_SUPPORTED_OI_CMD;i++)
+			  {
+			      if(oiOpChecker[i].opcode == e->data[0])
+			      {
+			    	   GPIO_ToggleBits(GPIOD, GPIO_Pin_12);
+			    	   oiOpChecker[i].func(*e);
+			      }
+			   }
+			   osDelay(1);
+		  }else{
+			  osDelay(1);
+		  }
+	}
 }
 
 char param[256];
 static void process_data_in(void const *arg)
 {
      //printf("test\r\n");
+	  queue_element_t elem;
 	 while(1)
 	 {
 		// printf("process_data_in\r\n");
@@ -352,38 +333,16 @@ static void process_data_in(void const *arg)
 			  continue;
 		  }
 		  // Pass command_type id and param[] and len
-		  processCommand(Command_type_id, param, len);
-		  //
-	 }
-
-	/*
-
-      */
-     /*
-	 while(1)
-	 {
-		  //GPIO_SetBits(GPIOD, GPIO_Pin_12);
-		  //osDelay(5);
-		  //delay(5);
-		  //printf("<B>");
-		  unsigned int tail;
-		  tail = getNextQueueData(&data_in, &e);
-		  //printf("tail=%d\r\n",tail);
-		  if (e) {
-			    //printf("Recv size: %d\r\n",e->len);
-			    //int i;
-				//for(i=0;i<e->len;i++){
-				//	printf("0x%X ",e->data[i]);
-				//}
-				//printf("\r\n");
-				customerHID.data = e->data[0];
-				USBD_HID_SendReport(&USB_OTG_dev, &customerHID, sizeof(struct customerHID_t));
+		  elem.data[0] = Command_type_id;
+		  for (i=0;i<len;i++){
+			  elem.data[i+1]  = param[i];
 		  }
-		  //GPIO_ResetBits(GPIOD, GPIO_Pin_12);
-		  //delay(5);
-		  osDelay(5);
+		  elem.len = len+1;
+		  if (!pushQueueElement(&commands,  elem)){
+			  printf("Push command error, skip this\r\n");
+			  GPIO_ToggleBits(GPIOD, GPIO_Pin_14);
+		  }
 	 }
-	 */
 }
 
 
@@ -405,8 +364,13 @@ static void mainThread(void const *arg)
 
 	 osThreadDef(USER_Thread_process_data_in, process_data_in, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
 	 thread3_id = osThreadCreate(osThread(USER_Thread_process_data_in), NULL);
+
 	 osThreadDef(USER_Thread_process_data_out, process_data_out, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
 	 thread4_id = osThreadCreate(osThread(USER_Thread_process_data_out), NULL);
+
+	 osThreadDef(USER_Thread_process_command, process_command, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
+	 thread5_id = osThreadCreate(osThread(USER_Thread_process_command), NULL);
+
 
 	 vTaskDelete( NULL );
 }
@@ -425,7 +389,9 @@ int main(void) {
     main_thread_id = osThreadCreate(osThread(USER_Thread1), NULL);
     //
     queueInit(&data_in);
-    queueInit(&data_out);
+    ringbufInit(&data_out);
+    queueInit(&commands);
+
     //
     osKernelStart();
 	while(1){};
