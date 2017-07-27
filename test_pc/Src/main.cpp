@@ -347,6 +347,11 @@ void *thread2(void *arg)
 		//int MY_EP_Out = 0x01;
 		char c;
 		int ls = 50;
+		int as = 50;
+		char dir = 0;
+		char adir = 0;
+		short linear_speed = 0;
+		short angular_speed = 0;
 		puts ("A dot ('.') to exit:");
 		do {
 		    c=getch();
@@ -356,9 +361,12 @@ void *thread2(void *arg)
 		    {
 		    case 'w': //OI_OPCODE_MOTORCONTROL
 		    {
+		    	dir = 1;
+		    	adir = 0;
 		    	char str[6];
-		    	int linear_speed = ls;
-		    	int angular_speed = 0;
+		    	linear_speed = dir*ls;
+		    	printf("linear_speed=0x%X\n",linear_speed);
+		    	angular_speed = 0;
 		    	str[0] = OI_OPCODE_MOTORCONTROL;  // command type id
 		    	str[1] = 0x4;  // len
 		    	str[2] = linear_speed & 0xFF;
@@ -370,9 +378,11 @@ void *thread2(void *arg)
 		    	break;
 		    case 's': //OI_OPCODE_MOTORCONTROL stop
 		   		    {
+		   		    	dir = 0;
+		   		    	adir = 0;
 		   		    	char str[6];
-		   		    	int linear_speed = 0;
-		   		    	int angular_speed = 0;
+		   		    	linear_speed = 0;
+		   		    	angular_speed = 0;
 		   		    	str[0] = OI_OPCODE_MOTORCONTROL;  // command type id
 		   		    	str[1] = 0x4;  // len
 		   		    	str[2] = linear_speed & 0xFF;
@@ -384,9 +394,12 @@ void *thread2(void *arg)
 		   		    	break;
 		    case 'x': //OI_OPCODE_MOTORCONTROL
 		    		    {
+		    		    	dir = -1;
+		    		    	adir = 0;
 		    		    	char str[6];
-		    		    	int linear_speed = -ls;
-		    		    	int angular_speed = 0;
+		    		    	linear_speed = dir*ls;
+		    		    	printf("linear_speed=0x%X\n",linear_speed);
+		    		    	angular_speed = 0;
 		    		    	str[0] = OI_OPCODE_MOTORCONTROL;  // command type id
 		    		    	str[1] = 0x4;  // len
 		    		    	str[2] = linear_speed & 0xFF;
@@ -396,15 +409,75 @@ void *thread2(void *arg)
 		    		    	send_message(str, sizeof(str));
 		    		    }
 		    		    break;
+		    case 'a':
+		   		    {
+		   		    	dir = 0;
+		   		    	adir = 1;
+		   		    			    		    	char str[6];
+		   		    			    		    	linear_speed = 0;
+		   		    			    		    	angular_speed = adir*as;
+		   		    			    		    	printf("linear_speed=0x%X\n",linear_speed);
+		   		    			    		    	str[0] = OI_OPCODE_MOTORCONTROL;  // command type id
+		   		    			    		    	str[1] = 0x4;  // len
+		   		    			    		    	str[2] = linear_speed & 0xFF;
+		   		    			    		    	str[3] = (linear_speed >> 8) & 0xFF;
+		   		    			    		    	str[4] = angular_speed & 0xFF;
+		   		    			    		    	str[5] = (angular_speed >> 8)& 0xFF;
+		   		    			    		    	send_message(str, sizeof(str));
+		   		    }
+		   		    break;
+		    case 'd':
+		 		   {
+		 			  dir = 0;
+		 			  adir = -1;
+		 			 char str[6];
+		 			 		   		    			    		    	linear_speed = 0;
+		 			 		   		    			    		    	angular_speed = adir*as;
+
+		 			 		   		    			    		    	str[0] = OI_OPCODE_MOTORCONTROL;  // command type id
+		 			 		   		    			    		    	str[1] = 0x4;  // len
+		 			 		   		    			    		    	str[2] = linear_speed & 0xFF;
+		 			 		   		    			    		    	str[3] = (linear_speed >> 8) & 0xFF;
+		 			 		   		    			    		    	str[4] = angular_speed & 0xFF;
+		 			 		   		    			    		    	str[5] = (angular_speed >> 8)& 0xFF;
+		 			 		   		    			    		    	send_message(str, sizeof(str));
+		 		   	}
+		 		   break;
 		    case '+':
+		    {
 		    				ls = ls+10;
 		    				if (ls > 100) ls = 100;
-		    				printf("ls=%d\n",ls);
+		    				as = as+10;
+		    				if (as > 100) as = 100;
+		    				char str[6];
+		    				linear_speed = dir*ls;
+		    				angular_speed = adir*as;
+		    				str[0] = OI_OPCODE_MOTORCONTROL;  // command type id
+		    				str[1] = 0x4;  // len
+		    				str[2] = linear_speed & 0xFF;
+		    				str[3] = (linear_speed >> 8) & 0xFF;
+		    				str[4] = angular_speed & 0xFF;
+		    				str[5] = (angular_speed >> 8)& 0xFF;
+		    				send_message(str, sizeof(str));
+		    }
 		   		    		    break;
 		    case '-':
+		    {
 		 		    		ls = ls-10;
 		 		    		if (ls < 0) ls = 0;
-		 		    		printf("ls=%d\n",ls);
+		 		    		as = as-10;
+		 		    		if (as < 0) as = 0;
+		 		    		char str[6];
+		 		    		linear_speed = dir*ls;
+		 		    		angular_speed = adir*as;
+		 		    		str[0] = OI_OPCODE_MOTORCONTROL;  // command type id
+		 		    		str[1] = 0x4;  // len
+		 		    		str[2] = linear_speed & 0xFF;
+		 		    		str[3] = (linear_speed >> 8) & 0xFF;
+		 		    		str[4] = angular_speed & 0xFF;
+		 		    		str[5] = (angular_speed >> 8)& 0xFF;
+		 		    		send_message(str, sizeof(str));
+		    }
 		 		   		    break;
 
 		    case 'b': //OI_OPCODE_QUERY

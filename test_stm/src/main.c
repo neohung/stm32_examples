@@ -41,6 +41,7 @@ void tim8pwm_init() //PC6/PC7PC8/PC9
 	  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7 | GPIO_Pin_8 | GPIO_Pin_9;
 	  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
 	  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
+
 	  GPIO_Init(GPIOC,&GPIO_InitStructure);
 
 	  GPIO_PinAFConfig(GPIOC,GPIO_PinSource6,GPIO_AF_TIM8);
@@ -51,8 +52,9 @@ void tim8pwm_init() //PC6/PC7PC8/PC9
 	  //SystemCoreClock = 168000000;
 	  ////timer_tick_frequency = 168000000 / ( Prescaler + 1) = 25000Hz
 	  //25000
-	  int Prescaler =  (SystemCoreClock / 25000) - 1;
+	  int Prescaler =  (SystemCoreClock / 250) - 1;
 	  // 4ms=250Hz => 25000Hz/250Hz = 100
+	  // 250/100 = 2.5Hz , 1/2.5 = 400ms
 	  int TimerPeriod =  100 ;
 	  int  ccr1 = 0;//TimerPeriod / 2;
 	  int  ccr2 = 0;//TimerPeriod / 2;
@@ -295,11 +297,10 @@ void oiProcessQuery(queue_element_t *e)
 }
 void oiProcessMotorControl(queue_element_t *e)
 {
-
-	int ls = (int)(e->data[1] + (e->data[2]>>8));
-	int as = (int)(e->data[3] + (e->data[4]>>8));
-	//printf("Process Motor Control, len: %d, ls:%d\r\n",len,ls);
-
+	//printf("Process Motor Control, 0x%X, 0x%X, 0x%X, 0x%X\r\n",e->data[1],e->data[2],e->data[3],e->data[4]);
+	short ls = (short)(e->data[1] + (e->data[2]<<8));
+	short as = (short)(e->data[3] + (e->data[4]<<8));
+	//printf("Process Motor Control, len: %d, ls:%d, as:%d\r\n",e->len,ls,as);
     TIM_OCInitTypeDef TIM_OCInitStructure = {0,};
 	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
 	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
@@ -320,6 +321,8 @@ void oiProcessMotorControl(queue_element_t *e)
 		TIM_OC4Init(TIM8,&TIM_OCInitStructure);
 	}else if (ls > 0){
 		//PC8, PC9 gen pwm
+		GPIO_ToggleBits(GPIOD, GPIO_Pin_15);
+
 		TIM_OCInitStructure.TIM_Pulse = 0;
 		TIM_OC1Init(TIM8,&TIM_OCInitStructure);
 		TIM_OCInitStructure.TIM_Pulse = 0;
@@ -331,6 +334,8 @@ void oiProcessMotorControl(queue_element_t *e)
 		TIM_OC4Init(TIM8,&TIM_OCInitStructure);
 	}else{
 		//PC6, PC7 gen pwm
+		GPIO_ToggleBits(GPIOD, GPIO_Pin_14);
+
 		TIM_OCInitStructure.TIM_Pulse = 0;
 		TIM_OC3Init(TIM8,&TIM_OCInitStructure);
 		TIM_OCInitStructure.TIM_Pulse = 0;
@@ -341,6 +346,9 @@ void oiProcessMotorControl(queue_element_t *e)
 		TIM_OCInitStructure.TIM_Pulse = ls;
 		TIM_OC2Init(TIM8,&TIM_OCInitStructure);
 	}
+    //TIM_Cmd(TIM8,ENABLE);
+    //TIM_CtrlPWMOutputs(TIM8,ENABLE);   //TIM1 and TIM8 need to exec this function
+
 }
 void oiProcessIMUQuery(queue_element_t *e)
 {
@@ -391,7 +399,7 @@ static void process_command(void const *arg)
 {
 	//unsigned int tail;
 	queue_element_t *e = 0;
-	unsigned char *pdata = 0;
+	//unsigned char *pdata = 0;
 	while(1)
 	{
 		  e=0;
@@ -416,15 +424,15 @@ static void process_command(void const *arg)
 }
 
 char param[256];
-queue_element_t elemarray[16];
-int index=0;
+//queue_element_t elemarray[16];
+//int index=0;
 static void process_data_in(void const *arg)
 {
      //printf("test\r\n");
 
 	 while(1)
 	 {
-		 //queue_element_t elem;
+		 queue_element_t elem;
 		// printf("process_data_in\r\n");
 		  char checksum = 0xFF;
 		  do{
@@ -456,17 +464,17 @@ static void process_data_in(void const *arg)
 		  // Pass command_type id and param[] and len
 
 
-		  elemarray[index].data[0] = Command_type_id;
+		  elem.data[0] = Command_type_id;
 		  for (i=0;i<len;i++){
-			  elemarray[index].data[i+1]  = param[i];
+			  elem.data[i+1]  = param[i];
 		  }
-		  elemarray[index].len = len+1;
-		  int ret = pushQueueElement(&commands,  elemarray[index]);
+		  elem.len = len+1;
+		  int ret = pushQueueElement(&commands,  elem);
 		  if (!ret){
 			  printf("Push command error, skip this\r\n");
 			  GPIO_ToggleBits(GPIOD, GPIO_Pin_14);
 		  }else{
-			  index = ret;
+			  //index = ret;
 		  }
 
 	 }
