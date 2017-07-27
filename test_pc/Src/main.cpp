@@ -346,6 +346,7 @@ void *thread2(void *arg)
 		//struct usb_dev_handle* usbhandle = (struct usb_dev_handle*)arg;
 		//int MY_EP_Out = 0x01;
 		char c;
+		int ls = 50;
 		puts ("A dot ('.') to exit:");
 		do {
 		    c=getch();
@@ -353,10 +354,10 @@ void *thread2(void *arg)
 		    //putchar(c);
 		    switch (c)
 		    {
-		    case 'a': //OI_OPCODE_MOTORCONTROL
+		    case 'w': //OI_OPCODE_MOTORCONTROL
 		    {
 		    	char str[6];
-		    	int linear_speed = 100;
+		    	int linear_speed = ls;
 		    	int angular_speed = 0;
 		    	str[0] = OI_OPCODE_MOTORCONTROL;  // command type id
 		    	str[1] = 0x4;  // len
@@ -381,6 +382,31 @@ void *thread2(void *arg)
 		   		    	send_message(str, sizeof(str));
 		   		    }
 		   		    	break;
+		    case 'x': //OI_OPCODE_MOTORCONTROL
+		    		    {
+		    		    	char str[6];
+		    		    	int linear_speed = -ls;
+		    		    	int angular_speed = 0;
+		    		    	str[0] = OI_OPCODE_MOTORCONTROL;  // command type id
+		    		    	str[1] = 0x4;  // len
+		    		    	str[2] = linear_speed & 0xFF;
+		    		    	str[3] = (linear_speed >> 8) & 0xFF;
+		    		    	str[4] = angular_speed & 0xFF;
+		    		    	str[5] = (angular_speed >> 8)& 0xFF;
+		    		    	send_message(str, sizeof(str));
+		    		    }
+		    		    break;
+		    case '+':
+		    				ls = ls+10;
+		    				if (ls > 100) ls = 100;
+		    				printf("ls=%d\n",ls);
+		   		    		    break;
+		    case '-':
+		 		    		ls = ls-10;
+		 		    		if (ls < 0) ls = 0;
+		 		    		printf("ls=%d\n",ls);
+		 		   		    break;
+
 		    case 'b': //OI_OPCODE_QUERY
 		    {
 		    	char str[2];

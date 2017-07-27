@@ -32,175 +32,66 @@ __ALIGN_BEGIN USB_OTG_CORE_HANDLE  USB_OTG_dev __ALIGN_END;
 // Private function prototypes
 void Delay(volatile uint32_t nCount);
 
-void ledpwm_init(void)
+void tim8pwm_init() //PC6/PC7PC8/PC9
 {
-	//Enable GPIOD Clock
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
-	//Init GPIO PD12
-	GPIO_InitTypeDef gpioStructure;
-	gpioStructure.GPIO_Pin = GPIO_Pin_12;
-	gpioStructure.GPIO_Mode = GPIO_Mode_AF;
-	gpioStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOD, &gpioStructure);
-	//Enable TIM4
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
-	//Init TIM4 Timer
-	TIM_TimeBaseInitTypeDef timerInitStructure;
-	timerInitStructure.TIM_Prescaler = 40000;
-	timerInitStructure.TIM_CounterMode = TIM_CounterMode_Up;
-	timerInitStructure.TIM_Period = 500;
-	timerInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
-	timerInitStructure.TIM_RepetitionCounter = 0;
-	TIM_TimeBaseInit(TIM4, &timerInitStructure);
-	TIM_Cmd(TIM4, ENABLE);
-	//
-	TIM_OCInitTypeDef outputChannelInit = {0,};
-	outputChannelInit.TIM_OCMode = TIM_OCMode_PWM1;
-	outputChannelInit.TIM_Pulse = 400;
-	outputChannelInit.TIM_OutputState = TIM_OutputState_Enable;
-	outputChannelInit.TIM_OCPolarity = TIM_OCPolarity_High;
+	  GPIO_InitTypeDef GPIO_InitStructure;
+	  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC,ENABLE);
+	  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+	  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7 | GPIO_Pin_8 | GPIO_Pin_9;
+	  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
+	  GPIO_Init(GPIOC,&GPIO_InitStructure);
 
-	TIM_OC1Init(TIM4, &outputChannelInit);
-	TIM_OC1PreloadConfig(TIM4, TIM_OCPreload_Enable);
+	  GPIO_PinAFConfig(GPIOC,GPIO_PinSource6,GPIO_AF_TIM8);
+	  GPIO_PinAFConfig(GPIOC,GPIO_PinSource7,GPIO_AF_TIM8);
+	  GPIO_PinAFConfig(GPIOC,GPIO_PinSource8,GPIO_AF_TIM8);
+	  GPIO_PinAFConfig(GPIOC,GPIO_PinSource9,GPIO_AF_TIM8);
 
-	GPIO_PinAFConfig(GPIOD, GPIO_PinSource12, GPIO_AF_TIM4);
+	  //SystemCoreClock = 168000000;
+	  ////timer_tick_frequency = 168000000 / ( Prescaler + 1) = 25000Hz
+	  //25000
+	  int Prescaler =  (SystemCoreClock / 25000) - 1;
+	  // 4ms=250Hz => 25000Hz/250Hz = 100
+	  int TimerPeriod =  100 ;
+	  int  ccr1 = 0;//TimerPeriod / 2;
+	  int  ccr2 = 0;//TimerPeriod / 2;
+	  int  ccr3 = 0;//TimerPeriod / 2;
+	  int  ccr4 = 0;//TimerPeriod / 2;
 
-}
+	    RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM8,ENABLE);
+	    TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
 
-void Motor_GPIO_Configuration(void)
-{
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM8, ENABLE);
+	    TIM_TimeBaseInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
+	    TIM_TimeBaseInitStructure.TIM_CounterMode = TIM_CounterMode_Up;
+	    TIM_TimeBaseInitStructure.TIM_Prescaler = Prescaler;
+	    TIM_TimeBaseInitStructure.TIM_RepetitionCounter = 0;
+	    TIM_TimeBaseInitStructure.TIM_Period = TimerPeriod - 1;
+	    TIM_TimeBaseInit(TIM8,&TIM_TimeBaseInitStructure);
 
-	GPIO_InitTypeDef GPIO_InitStructure;
-	//
-	//RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB|RCC_APB2Periph_GPIOC, ENABLE);
-	//
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF; //GPIO_Mode_AF
-	GPIO_Init(GPIOC, &GPIO_InitStructure);
+	    TIM_OCInitTypeDef TIM_OCInitStructure = {0,};
+	    TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
+	    TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+	    TIM_OCInitStructure.TIM_OutputNState = TIM_OutputNState_Enable;
+	    TIM_OCInitStructure.TIM_Pulse = ccr1;
+	    TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
+	    TIM_OCInitStructure.TIM_OCNPolarity = TIM_OCPolarity_High;
+	    TIM_OCInitStructure.TIM_OCIdleState = TIM_OCIdleState_Set;
+	    TIM_OCInitStructure.TIM_OCNIdleState = TIM_OCNIdleState_Reset;
 
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF; //GPIO_Mode_AF
-	GPIO_Init(GPIOC, &GPIO_InitStructure);
+	    TIM_OC1Init(TIM8,&TIM_OCInitStructure);
 
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF; //GPIO_Mode_AF
-	GPIO_Init(GPIOC, &GPIO_InitStructure);
+	    TIM_OCInitStructure.TIM_Pulse = ccr2;
+	    TIM_OC2Init(TIM8,&TIM_OCInitStructure);
 
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF; //GPIO_Mode_AF
-	GPIO_Init(GPIOC, &GPIO_InitStructure);
+	    TIM_OCInitStructure.TIM_Pulse = ccr3;
+	    TIM_OC3Init(TIM8,&TIM_OCInitStructure);
 
-	TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
-	TIM_OCInitTypeDef  TIM_OCInitStructure;
+	    TIM_OCInitStructure.TIM_Pulse = ccr4;
+	    TIM_OC4Init(TIM8,&TIM_OCInitStructure);
 
-	#define MOTOR_PWM_SYSCLK_DIV	0
-	#define MOTOR_PWM_CLK_72MHZ  	1
-
-	//MOTOR_PWM_CLK_36MHZ/¡]MOTOR_PWM_PERIOD+1)
-	unsigned int motor_pwm_period=0;
-	//Setup Period
-	TIM_TimeBaseStructure.TIM_ClockDivision = MOTOR_PWM_SYSCLK_DIV;
-	TIM_TimeBaseStructure.TIM_Prescaler = MOTOR_PWM_CLK_72MHZ;
-	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
-	TIM_TimeBaseStructure.TIM_Period = motor_pwm_period;
-	TIM_TimeBaseInit(TIM8, &TIM_TimeBaseStructure);
-	//OC1 PWM
-	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
-	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-	TIM_OCInitStructure.TIM_Pulse = 0;										//PULSE
-	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
-	TIM_OCInitStructure.TIM_OCNPolarity = TIM_OCNPolarity_High;
-	TIM_OCInitStructure.TIM_OCIdleState = TIM_OCIdleState_Set;
-	TIM_OCInitStructure.TIM_OCNIdleState = TIM_OCIdleState_Reset;
-	TIM_OC1Init(TIM8, &TIM_OCInitStructure);
-	//OC2 PWM
-	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-	TIM_OCInitStructure.TIM_Pulse = 0;										//PULSE
-	TIM_OC2Init(TIM8, &TIM_OCInitStructure);
-	//OC3 PWM
-	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-	TIM_OCInitStructure.TIM_Pulse = 0;										//PULSE
-	TIM_OC3Init(TIM8, &TIM_OCInitStructure);
-	//OC4 PWM
-	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-	TIM_OCInitStructure.TIM_Pulse = 0;										//PULSE
-	TIM_OC4Init(TIM8, &TIM_OCInitStructure);
-	//NVIC
-	/*
-	NVIC_InitTypeDef NVIC_InitStructure;
-	NVIC_InitStructure.NVIC_IRQChannel = TIM8_UP_IRQChannel;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStructure);
-	*/
-	//Enable TIM8 and PWM
-	TIM_Cmd(TIM8, ENABLE);
-	TIM_CtrlPWMOutputs(TIM8,ENABLE);
-	//
-	TIM_SetCompare4(TIM8,0);
-	TIM_SetCompare2(TIM8,0);
-	TIM_SetCompare1(TIM8,0);
-	TIM_SetCompare3(TIM8,0);
-	//
-}
-
-void InitializeTimer()
-{
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
-
-    TIM_TimeBaseInitTypeDef timerInitStructure;
-    timerInitStructure.TIM_Prescaler = 40000;
-    timerInitStructure.TIM_CounterMode = TIM_CounterMode_Up;
-    timerInitStructure.TIM_Period = 500;
-    timerInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
-    timerInitStructure.TIM_RepetitionCounter = 0;
-    TIM_TimeBaseInit(TIM4, &timerInitStructure);
-    TIM_Cmd(TIM4, ENABLE);
-}
-
-void InitializePWMChannel()
-{
-	TIM_OCInitTypeDef outputChannelInit = {0,};
-	outputChannelInit.TIM_OCMode = TIM_OCMode_PWM1;
-	outputChannelInit.TIM_Pulse = 400;
-	outputChannelInit.TIM_OutputState = TIM_OutputState_Enable;
-	outputChannelInit.TIM_OCPolarity = TIM_OCPolarity_High;
-
-	TIM_OC1Init(TIM4, &outputChannelInit);
-	TIM_OC1PreloadConfig(TIM4, TIM_OCPreload_Enable);
-
-	GPIO_PinAFConfig(GPIOD, GPIO_PinSource12, GPIO_AF_TIM4);
-}
-
-void InitializePWMChannel2()
-{
-	TIM_OCInitTypeDef outputChannelInit = {0,};
-	outputChannelInit.TIM_OCMode = TIM_OCMode_PWM1;
-	outputChannelInit.TIM_Pulse = 100;
-	outputChannelInit.TIM_OutputState = TIM_OutputState_Enable;
-	outputChannelInit.TIM_OCPolarity = TIM_OCPolarity_High;
-
-	TIM_OC2Init(TIM4, &outputChannelInit);
-	TIM_OC2PreloadConfig(TIM4, TIM_OCPreload_Enable);
-
-	GPIO_PinAFConfig(GPIOD, GPIO_PinSource13, GPIO_AF_TIM4);
-}
-
-void InitializeLEDs()
-{
-    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
-
-    GPIO_InitTypeDef gpioStructure;
-    gpioStructure.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13;
-    gpioStructure.GPIO_Mode = GPIO_Mode_AF;
-    gpioStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(GPIOD, &gpioStructure);
+	    TIM_Cmd(TIM8,ENABLE);
+	    TIM_CtrlPWMOutputs(TIM8,ENABLE);   //TIM1 and TIM8 need to exec this function
 }
 
 void init() {
@@ -220,7 +111,6 @@ void init() {
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
 	GPIO_Init(GPIOD, &GPIO_InitStructure);
-
 	//-----------USER BTN (PA0)---------
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
     // Clock for SYSCFG
@@ -233,6 +123,7 @@ void init() {
     GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_DOWN;
     GPIO_InitStruct.GPIO_Speed = GPIO_Speed_2MHz;
     GPIO_Init(GPIOA, &GPIO_InitStruct);
+    /*
     // Selects the GPIOA pin 0 used as external interrupt source
     SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOA, EXTI_PinSource0);
     // External interrupt settings
@@ -242,6 +133,7 @@ void init() {
     EXTI_InitStruct.EXTI_Mode = EXTI_Mode_Interrupt;
     EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Rising;
     EXTI_Init(&EXTI_InitStruct);
+
     // Nested vectored interrupt settings
     NVIC_InitTypeDef NVIC_InitStruct;
     NVIC_InitStruct.NVIC_IRQChannel = EXTI0_IRQn;
@@ -250,13 +142,10 @@ void init() {
     NVIC_InitStruct.NVIC_IRQChannelPreemptionPriority = 0x00;
     NVIC_InitStruct.NVIC_IRQChannelSubPriority = 0x00;
     NVIC_Init(&NVIC_InitStruct);
+    */
     //
     //Motor_GPIO_Configuration();
-    //ledpwm_init();
-    InitializeLEDs();
-    	InitializeTimer();
-    	InitializePWMChannel();
-    	InitializePWMChannel2();
+    tim8pwm_init();
     //
 }
 
@@ -277,7 +166,7 @@ void EXTI0_IRQHandler(void)
 	{
 
 		is_user_button_press = 1;
-		GPIO_SetBits(GPIOD, GPIO_Pin_14);
+		//GPIO_SetBits(GPIOD, GPIO_Pin_14);
 		 EXTI_ClearITPendingBit(EXTI_Line0);
 	}
 
@@ -292,7 +181,7 @@ static void Thread2(void const *arg)
 	   osDelay(250);
 		if (is_user_button_press){
 		 is_user_button_press = 0;
-		  GPIO_ResetBits(GPIOD, GPIO_Pin_14);
+		  //GPIO_ResetBits(GPIOD, GPIO_Pin_14);
 		}
 	  GPIO_ResetBits(GPIOD, GPIO_Pin_13);
 	   osDelay(250);
@@ -381,7 +270,7 @@ typedef enum _OI_Opcode {
 //------------------------------------
 static char str[12];
 
-void oiProcessQuery(queue_element_t e)
+void oiProcessQuery(queue_element_t *e)
 {
 	printf("Process Odom Query\r\n");
 	int x = 0x0001; //mm
@@ -404,11 +293,56 @@ void oiProcessQuery(queue_element_t e)
 	send_message(str, sizeof(str));
 
 }
-void oiProcessMotorControl(queue_element_t e)
+void oiProcessMotorControl(queue_element_t *e)
 {
-	printf("Process Motor Control\r\n");
+
+	int ls = (int)(e->data[1] + (e->data[2]>>8));
+	int as = (int)(e->data[3] + (e->data[4]>>8));
+	//printf("Process Motor Control, len: %d, ls:%d\r\n",len,ls);
+
+    TIM_OCInitTypeDef TIM_OCInitStructure = {0,};
+	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
+	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+	TIM_OCInitStructure.TIM_OutputNState = TIM_OutputNState_Enable;
+	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
+	TIM_OCInitStructure.TIM_OCNPolarity = TIM_OCPolarity_High;
+	TIM_OCInitStructure.TIM_OCIdleState = TIM_OCIdleState_Set;
+	TIM_OCInitStructure.TIM_OCNIdleState = TIM_OCNIdleState_Reset;
+
+	if (ls == 0){
+		TIM_OCInitStructure.TIM_Pulse = 0;
+		TIM_OC1Init(TIM8,&TIM_OCInitStructure);
+		TIM_OCInitStructure.TIM_Pulse = 0;
+		TIM_OC2Init(TIM8,&TIM_OCInitStructure);
+		TIM_OCInitStructure.TIM_Pulse = 0;
+		TIM_OC3Init(TIM8,&TIM_OCInitStructure);
+		TIM_OCInitStructure.TIM_Pulse = 0;
+		TIM_OC4Init(TIM8,&TIM_OCInitStructure);
+	}else if (ls > 0){
+		//PC8, PC9 gen pwm
+		TIM_OCInitStructure.TIM_Pulse = 0;
+		TIM_OC1Init(TIM8,&TIM_OCInitStructure);
+		TIM_OCInitStructure.TIM_Pulse = 0;
+		TIM_OC2Init(TIM8,&TIM_OCInitStructure);
+
+		TIM_OCInitStructure.TIM_Pulse = ls;
+		TIM_OC3Init(TIM8,&TIM_OCInitStructure);
+		TIM_OCInitStructure.TIM_Pulse = ls;
+		TIM_OC4Init(TIM8,&TIM_OCInitStructure);
+	}else{
+		//PC6, PC7 gen pwm
+		TIM_OCInitStructure.TIM_Pulse = 0;
+		TIM_OC3Init(TIM8,&TIM_OCInitStructure);
+		TIM_OCInitStructure.TIM_Pulse = 0;
+		TIM_OC4Init(TIM8,&TIM_OCInitStructure);
+
+		TIM_OCInitStructure.TIM_Pulse = ls;
+		TIM_OC1Init(TIM8,&TIM_OCInitStructure);
+		TIM_OCInitStructure.TIM_Pulse = ls;
+		TIM_OC2Init(TIM8,&TIM_OCInitStructure);
+	}
 }
-void oiProcessIMUQuery(queue_element_t e)
+void oiProcessIMUQuery(queue_element_t *e)
 {
 	printf("Process IMU Query\r\n");
 		char str[8];
@@ -426,7 +360,7 @@ void oiProcessIMUQuery(queue_element_t e)
 		send_message(str, sizeof(str));
 }
 //------------------------------------
-typedef void (*OiHandleOpcode_t)(queue_element_t e);
+typedef void (*OiHandleOpcode_t)(queue_element_t *e);
 
 typedef struct _OiCmdDispatcher{
     OIOpcode                opcode;
@@ -457,6 +391,7 @@ static void process_command(void const *arg)
 {
 	//unsigned int tail;
 	queue_element_t *e = 0;
+	unsigned char *pdata = 0;
 	while(1)
 	{
 		  e=0;
@@ -469,8 +404,8 @@ static void process_command(void const *arg)
 			      if(oiOpChecker[i].opcode == e->data[0])
 			      {
 			    	   //green led
-			    	   //GPIO_ToggleBits(GPIOD, GPIO_Pin_12);
-			    	   oiOpChecker[i].func(*e);
+			    	   GPIO_ToggleBits(GPIOD, GPIO_Pin_12);
+			    	   oiOpChecker[i].func(e);
 			      }
 			   }
 			   osDelay(1);
@@ -481,12 +416,15 @@ static void process_command(void const *arg)
 }
 
 char param[256];
+queue_element_t elemarray[16];
+int index=0;
 static void process_data_in(void const *arg)
 {
      //printf("test\r\n");
-	  queue_element_t elem;
+
 	 while(1)
 	 {
+		 //queue_element_t elem;
 		// printf("process_data_in\r\n");
 		  char checksum = 0xFF;
 		  do{
@@ -516,18 +454,23 @@ static void process_data_in(void const *arg)
 			  continue;
 		  }
 		  // Pass command_type id and param[] and len
-		  elem.data[0] = Command_type_id;
+
+
+		  elemarray[index].data[0] = Command_type_id;
 		  for (i=0;i<len;i++){
-			  elem.data[i+1]  = param[i];
+			  elemarray[index].data[i+1]  = param[i];
 		  }
-		  elem.len = len+1;
-		  if (!pushQueueElement(&commands,  elem)){
+		  elemarray[index].len = len+1;
+		  int ret = pushQueueElement(&commands,  elemarray[index]);
+		  if (!ret){
 			  printf("Push command error, skip this\r\n");
 			  GPIO_ToggleBits(GPIOD, GPIO_Pin_14);
+		  }else{
+			  index = ret;
 		  }
+
 	 }
 }
-
 
 extern  USBD_Usr_cb_TypeDef USR_cb;
 extern  USBD_DEVICE USR_desc;
@@ -562,7 +505,8 @@ static void mainThread(void const *arg)
 
 int main(void) {
 	init();
-    printf("init\r\n");
+	  //ledpwm_init();
+   // printf("init\r\n");
 	/*
 	 * Disable STDOUT buffering. Otherwise nothing will be printed
 	 * before a newline character or when the buffer is flushed.
@@ -574,7 +518,6 @@ int main(void) {
     queueInit(&data_in);
     ringbufInit(&data_out);
     queueInit(&commands);
-
     //
     osKernelStart();
 	while(1){};
