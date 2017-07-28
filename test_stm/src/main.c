@@ -26,6 +26,7 @@ queue_t data_in;
 queue_t commands;
 ringbuf_t data_out;
 
+#define USB_USBHID 0
 
 __ALIGN_BEGIN USB_OTG_CORE_HANDLE  USB_OTG_dev __ALIGN_END;
 
@@ -96,6 +97,215 @@ void tim8pwm_init() //PC6/PC7PC8/PC9
 	    TIM_CtrlPWMOutputs(TIM8,ENABLE);   //TIM1 and TIM8 need to exec this function
 }
 
+void uart2_init()
+{
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
+	GPIO_InitTypeDef  GPIO_InitStructure;
+	//PA9 TX / PA10 RX
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5 | GPIO_Pin_6;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIOD, &GPIO_InitStructure);
+	//
+	USART_InitTypeDef USART_InitStructure;
+	USART_InitStructure.USART_BaudRate = 115200;
+	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+	USART_InitStructure.USART_StopBits = USART_StopBits_1;
+	USART_InitStructure.USART_Parity = USART_Parity_No;
+	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+	USART_Init(USART2, &USART_InitStructure);
+	USART_Cmd(USART2, ENABLE);
+}
+
+void uart1_init()
+{
+		USART_InitTypeDef USART_InitStruct;
+		GPIO_InitTypeDef GPIO_InitStruct, GPIO_InitStruct2;
+	    NVIC_InitTypeDef NVIC_InitStruct;
+
+	    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1,ENABLE);
+	    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB,ENABLE);
+
+	    GPIO_InitStruct.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7;
+	    GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF;
+	    GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz;
+	    GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
+	    GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_NOPULL;//GPIO_PuPd_UP;
+	    GPIO_Init(GPIOB,&GPIO_InitStruct);
+	    GPIO_PinAFConfig(GPIOB,GPIO_PinSource6,GPIO_AF_USART1);
+	    GPIO_PinAFConfig(GPIOB,GPIO_PinSource7,GPIO_AF_USART1);
+
+	    USART_InitStruct.USART_WordLength = USART_WordLength_8b;
+	    USART_InitStruct.USART_BaudRate = 115200;
+	    USART_InitStruct.USART_StopBits = USART_StopBits_1;
+	    USART_InitStruct.USART_Parity = USART_Parity_No;
+	    USART_InitStruct.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+	    USART_InitStruct.USART_Mode = USART_Mode_Tx | USART_Mode_Rx;
+	    USART_Init(USART1,&USART_InitStruct);
+	    USART_ITConfig(USART1,USART_IT_RXNE,ENABLE);
+
+	    NVIC_InitStruct.NVIC_IRQChannel = USART1_IRQn;
+	    NVIC_InitStruct.NVIC_IRQChannelPreemptionPriority = 0;
+	    NVIC_InitStruct.NVIC_IRQChannelSubPriority = 0;
+	    NVIC_InitStruct.NVIC_IRQChannelCmd = ENABLE;
+	    NVIC_Init(&NVIC_InitStruct);
+
+	    USART_Cmd(USART1,ENABLE);
+}
+
+void USART1_puts(volatile char* s)
+{
+    while(*s)
+    {
+        while(!(USART1->SR & 0x00000040)){
+        }
+        USART_SendData(USART1,*s);
+        *s++;
+    }
+}
+
+
+
+/*
+void USART1_IRQHandler(void)
+{
+	int MAX_STRLEN = 128;
+    int i = 0;
+    if(USART_GetITStatus(USART1, USART_IT_RXNE) != RESET)
+    {
+        static uint8_t cnt = 0;
+        char t = USART_ReceiveData(USART1);
+        //USART1_putch(t);
+        if((t!='n')&&(cnt < MAX_STRLEN))
+        {
+            //received_string[cnt] = t;
+            cnt++;
+        }else{
+            cnt = 0;
+            //USART1_puts(received_string);
+            //for (i = 0; i <= MAX_STRLEN+1; i++)         // flush buffer
+            //received_string[i] = '\0';
+        }
+    }
+}
+*/
+
+void USART_puts(USART_TypeDef* USARTx, volatile char *s){
+
+    while(*s){
+        // wait until data register is empty
+        while( !(USARTx->SR & 0x00000040) );
+        USART_SendData(USARTx, *s);
+        *s++;
+    }
+}
+
+void USART1_IRQHandler(void){
+	int MAX_STRLEN=12;
+    // check if the USART1 receive interrupt flag was set
+    if( USART_GetITStatus(USART1, USART_IT_RXNE) ){
+
+        static uint8_t cnt = 0; // this counter is used to determine the string length
+        char t = USART1->DR; // the character from the USART1 data register is saved in t
+
+        if( (t != '\n') && (cnt < MAX_STRLEN) ){
+            //received_string[cnt] = t;
+            cnt++;
+        }
+        else{ // otherwise reset the character counter and print the received string
+            cnt = 0;
+            USART_puts(USART1, 'A');
+            //USART_puts(USART1, "\n");
+            //memset(received_string, 0, MAX_STRLEN+1);
+        }
+    }
+}
+void init_USART1(uint32_t baudrate){
+
+    GPIO_InitTypeDef GPIO_InitStruct;                       // this is for the GPIO pins used as TX and RX
+    USART_InitTypeDef USART_InitStruct;                     // this is for the USART1 initilization
+    NVIC_InitTypeDef NVIC_InitStructure;                    // this is used to configure the NVIC (nested vector interrupt controller)
+
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);  // Peripheral clock for USART1 (APB2) --> other USART uses APB1
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);   // Peripheral clock for GPIOB (PB6 = TX, PB7 = RX)
+
+    GPIO_InitStruct.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7;     // Pins 6 (TX) and 7 (RX) are used
+    GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF;               // the pins are configured as alternate function so the USART peripheral has access to them
+    GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz;          // this defines the IO speed and has nothing to do with the baudrate!
+    GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;             // this defines the output type as push pull mode (as opposed to open drain)
+    GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_UP;               // this activates the pullup resistors on the IO pins
+    GPIO_Init(GPIOB, &GPIO_InitStruct);                     // now all the values are passed to the GPIO_Init() function which sets the GPIO registers
+
+    /* The RX and TX pins are now connected to their AF
+     * so that the USART1 can take over control of the
+     * pins
+     */
+    GPIO_PinAFConfig(GPIOB, GPIO_PinSource6, GPIO_AF_USART1);
+    GPIO_PinAFConfig(GPIOB, GPIO_PinSource7, GPIO_AF_USART1);
+
+    /* Now the USART_InitStruct is used to define the
+     * properties of USART1
+     */
+    USART_InitStruct.USART_BaudRate = baudrate;             // the baudrate is set to the value we passed into this init function
+    USART_InitStruct.USART_WordLength = USART_WordLength_8b;// we want the data frame size to be 8 bits (standard)
+    USART_InitStruct.USART_StopBits = USART_StopBits_1;     // we want 1 stop bit (standard)
+    USART_InitStruct.USART_Parity = USART_Parity_No;        // we don't want a parity bit (standard)
+    USART_InitStruct.USART_HardwareFlowControl = USART_HardwareFlowControl_None; // we don't want flow control (standard)
+    USART_InitStruct.USART_Mode = USART_Mode_Tx | USART_Mode_Rx; // we want to enable the transmitter and the receiver
+    USART_Init(USART1, &USART_InitStruct);                  // again all the properties are passed to the USART_Init function which takes care of all the bit setting
+
+    USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);          // enable the USART1 receive interrupt
+
+    NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;       // we want to configure the USART1 interrupts
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;// this sets the priority group of the USART1 interrupts
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;      // this sets the subpriority inside the group
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;         // the USART1 interrupts are globally enabled
+    NVIC_Init(&NVIC_InitStructure);                         // the properties are passed to the NVIC_Init function which takes care of the low level stuff
+
+    USART_Cmd(USART1, ENABLE);                              // This enables the complete USART1 peripheral
+}
+
+
+void uart3_init()
+{
+		USART_InitTypeDef USART_InitStruct;
+		GPIO_InitTypeDef GPIO_InitStruct;
+	    NVIC_InitTypeDef NVIC_InitStruct;
+
+	    RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3,ENABLE);
+	    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB,ENABLE);
+
+	    GPIO_InitStruct.GPIO_Pin = GPIO_Pin_10 | GPIO_Pin_11;
+	    GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF;
+	    GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz;
+	    GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
+	    GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_NOPULL;//GPIO_PuPd_UP;
+	    GPIO_Init(GPIOB,&GPIO_InitStruct);
+	    GPIO_PinAFConfig(GPIOB,GPIO_PinSource10,GPIO_AF_USART3);
+	    GPIO_PinAFConfig(GPIOB,GPIO_PinSource11,GPIO_AF_USART3);
+
+	    USART_InitStruct.USART_WordLength = USART_WordLength_8b;
+	    USART_InitStruct.USART_BaudRate = 115200;
+	    USART_InitStruct.USART_StopBits = USART_StopBits_1;
+	    USART_InitStruct.USART_Parity = USART_Parity_No;
+	    USART_InitStruct.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+	    USART_InitStruct.USART_Mode = USART_Mode_Tx | USART_Mode_Rx;
+	    USART_Init(USART3,&USART_InitStruct);
+	    USART_ITConfig(USART3,USART_IT_RXNE,ENABLE);
+
+	    NVIC_InitStruct.NVIC_IRQChannel = USART3_IRQn;
+	    NVIC_InitStruct.NVIC_IRQChannelPreemptionPriority = 0;
+	    NVIC_InitStruct.NVIC_IRQChannelSubPriority = 0;
+	    NVIC_InitStruct.NVIC_IRQChannelCmd = ENABLE;
+	    NVIC_Init(&NVIC_InitStruct);
+
+	    USART_Cmd(USART3,ENABLE);
+}
+
 void init() {
 	GPIO_InitTypeDef  GPIO_InitStructure;
 	// ---------- SysTick timer -------- //
@@ -148,6 +358,8 @@ void init() {
     //
     //Motor_GPIO_Configuration();
     tim8pwm_init();
+   // uart1_init();
+    uart3_init();
     //
 }
 
@@ -181,6 +393,13 @@ static void Thread2(void const *arg)
 	 {
 	   GPIO_SetBits(GPIOD, GPIO_Pin_13);
 	   osDelay(250);
+	   //
+	   USART_SendData(USART3, 'A');
+	   //while(!(USART1->SR & 0x00000040)){
+	   //       }
+	   //USART_SendData(USART1,'A');
+
+	   //
 		if (is_user_button_press){
 		 is_user_button_press = 0;
 		  //GPIO_ResetBits(GPIOD, GPIO_Pin_14);
@@ -274,7 +493,7 @@ static char str[12];
 
 void oiProcessQuery(queue_element_t *e)
 {
-	printf("Process Odom Query\r\n");
+	//printf("Process Odom Query\r\n");
 	int x = 0x0001; //mm
 	int y = 0x0002; //mm
 	int theta = 0x0003; //degree 0~360
@@ -300,7 +519,7 @@ void oiProcessMotorControl(queue_element_t *e)
 	//printf("Process Motor Control, 0x%X, 0x%X, 0x%X, 0x%X\r\n",e->data[1],e->data[2],e->data[3],e->data[4]);
 	short ls = (short)(e->data[1] + (e->data[2]<<8));
 	short as = (short)(e->data[3] + (e->data[4]<<8));
-	//printf("Process Motor Control, len: %d, ls:%d, as:%d\r\n",e->len,ls,as);
+	printf("Process Motor Control, len: %d, ls:%d, as:%d\r\n",e->len,ls,as);
     TIM_OCInitTypeDef TIM_OCInitStructure = {0,};
 	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
 	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
@@ -310,41 +529,50 @@ void oiProcessMotorControl(queue_element_t *e)
 	TIM_OCInitStructure.TIM_OCIdleState = TIM_OCIdleState_Set;
 	TIM_OCInitStructure.TIM_OCNIdleState = TIM_OCNIdleState_Reset;
 
-	if (ls == 0){
+	short left_wheel_pwm = ls;
+	short right_wheel_pwm = ls;
+	if (as == 0){
+
+	}else if (as > 0){
+		left_wheel_pwm -= as;
+		right_wheel_pwm += as;
+	} else {
+		left_wheel_pwm += as;
+		right_wheel_pwm -= as;
+	}
+
+	if (left_wheel_pwm == 0){
 		TIM_OCInitStructure.TIM_Pulse = 0;
 		TIM_OC1Init(TIM8,&TIM_OCInitStructure);
 		TIM_OCInitStructure.TIM_Pulse = 0;
-		TIM_OC2Init(TIM8,&TIM_OCInitStructure);
+		TIM_OC3Init(TIM8,&TIM_OCInitStructure);
+	}else if (left_wheel_pwm> 0){
+		TIM_OCInitStructure.TIM_Pulse = left_wheel_pwm;
+		TIM_OC1Init(TIM8,&TIM_OCInitStructure);
 		TIM_OCInitStructure.TIM_Pulse = 0;
 		TIM_OC3Init(TIM8,&TIM_OCInitStructure);
+	}else{
+		TIM_OCInitStructure.TIM_Pulse = 0;
+		TIM_OC1Init(TIM8,&TIM_OCInitStructure);
+		TIM_OCInitStructure.TIM_Pulse = -1*left_wheel_pwm;
+		TIM_OC3Init(TIM8,&TIM_OCInitStructure);
+	}
+
+	if (right_wheel_pwm == 0){
+		TIM_OCInitStructure.TIM_Pulse = 0;
+		TIM_OC2Init(TIM8,&TIM_OCInitStructure);
 		TIM_OCInitStructure.TIM_Pulse = 0;
 		TIM_OC4Init(TIM8,&TIM_OCInitStructure);
-	}else if (ls > 0){
-		//PC8, PC9 gen pwm
-		GPIO_ToggleBits(GPIOD, GPIO_Pin_15);
-
-		TIM_OCInitStructure.TIM_Pulse = 0;
-		TIM_OC1Init(TIM8,&TIM_OCInitStructure);
-		TIM_OCInitStructure.TIM_Pulse = 0;
+	}else if (right_wheel_pwm> 0){
+		TIM_OCInitStructure.TIM_Pulse = right_wheel_pwm;
 		TIM_OC2Init(TIM8,&TIM_OCInitStructure);
-
-		TIM_OCInitStructure.TIM_Pulse = ls;
-		TIM_OC3Init(TIM8,&TIM_OCInitStructure);
-		TIM_OCInitStructure.TIM_Pulse = ls;
+		TIM_OCInitStructure.TIM_Pulse = 0;
 		TIM_OC4Init(TIM8,&TIM_OCInitStructure);
 	}else{
-		//PC6, PC7 gen pwm
-		GPIO_ToggleBits(GPIOD, GPIO_Pin_14);
-
 		TIM_OCInitStructure.TIM_Pulse = 0;
-		TIM_OC3Init(TIM8,&TIM_OCInitStructure);
-		TIM_OCInitStructure.TIM_Pulse = 0;
-		TIM_OC4Init(TIM8,&TIM_OCInitStructure);
-
-		TIM_OCInitStructure.TIM_Pulse = ls;
-		TIM_OC1Init(TIM8,&TIM_OCInitStructure);
-		TIM_OCInitStructure.TIM_Pulse = ls;
 		TIM_OC2Init(TIM8,&TIM_OCInitStructure);
+		TIM_OCInitStructure.TIM_Pulse = -1*right_wheel_pwm;
+		TIM_OC4Init(TIM8,&TIM_OCInitStructure);
 	}
     //TIM_Cmd(TIM8,ENABLE);
     //TIM_CtrlPWMOutputs(TIM8,ENABLE);   //TIM1 and TIM8 need to exec this function
@@ -352,7 +580,7 @@ void oiProcessMotorControl(queue_element_t *e)
 }
 void oiProcessIMUQuery(queue_element_t *e)
 {
-	printf("Process IMU Query\r\n");
+	//printf("Process IMU Query\r\n");
 		char str[8];
 		int yaw = 0x0001; //-180~180
 		int pitch = 0x0002; //-180~180
@@ -485,7 +713,8 @@ extern  USBD_DEVICE USR_desc;
 extern USBD_Class_cb_TypeDef  USBD_neo_cb;
 extern void USBD_Init(USB_OTG_CORE_HANDLE *pdev, USB_OTG_CORE_ID_TypeDef coreID, USBD_DEVICE *pDevice, USBD_Class_cb_TypeDef *class_cb, USBD_Usr_cb_TypeDef *usr_cb);
 volatile osThreadId main_thread_id = NULL;
-static void mainThread(void const *arg)
+
+static void mainUSBThread(void const *arg)
 {
 	// ------------- USB -------------- //
 	USBD_Init(&USB_OTG_dev,
@@ -510,6 +739,16 @@ static void mainThread(void const *arg)
 }
 
 
+static void mainUARTThread(void const *arg)
+{
+	 osThreadDef(USER_Thread2, Thread2, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
+	 thread2_id = osThreadCreate(osThread(USER_Thread2), NULL);
+
+	 osThreadDef(USER_Thread_process_command, process_command, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
+	 thread5_id = osThreadCreate(osThread(USER_Thread_process_command), NULL);
+
+	 vTaskDelete( NULL );
+}
 
 int main(void) {
 	init();
@@ -520,7 +759,11 @@ int main(void) {
 	 * before a newline character or when the buffer is flushed.
 	 */
 	setbuf(stdout, NULL);
-    osThreadDef(USER_Thread1, mainThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
+#if USB_USBHID
+    osThreadDef(USER_Thread1, mainUSBThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
+#else
+    osThreadDef(USER_Thread1, mainUARTThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
+#endif
     main_thread_id = osThreadCreate(osThread(USER_Thread1), NULL);
     //
     queueInit(&data_in);

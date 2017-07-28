@@ -443,6 +443,7 @@ void *thread2(void *arg)
 		 			 		   		    			    		    	send_message(str, sizeof(str));
 		 		   	}
 		 		   break;
+		    case '=':
 		    case '+':
 		    {
 		    				ls = ls+10;
