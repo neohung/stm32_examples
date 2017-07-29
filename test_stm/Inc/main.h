@@ -1,8 +1,8 @@
 /*
  * main.h
  *
- *  Created on: 10 jul 2012
- *      Author: BenjaminVe
+ *  Created on:
+ *      Author:
  */
 
 #ifndef MAIN_H_

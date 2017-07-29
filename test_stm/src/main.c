@@ -18,8 +18,8 @@
 
 #include "usb_core.h" //in USB_OTG
 
+#include "uart.h"
 #include "queue.h"
-
 #include "ringbuf.h"
 queue_t data_in;
 //queue_t data_out;
@@ -97,215 +97,6 @@ void tim8pwm_init() //PC6/PC7PC8/PC9
 	    TIM_CtrlPWMOutputs(TIM8,ENABLE);   //TIM1 and TIM8 need to exec this function
 }
 
-void uart2_init()
-{
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
-	GPIO_InitTypeDef  GPIO_InitStructure;
-	//PA9 TX / PA10 RX
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5 | GPIO_Pin_6;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-	GPIO_Init(GPIOD, &GPIO_InitStructure);
-	//
-	USART_InitTypeDef USART_InitStructure;
-	USART_InitStructure.USART_BaudRate = 115200;
-	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
-	USART_InitStructure.USART_StopBits = USART_StopBits_1;
-	USART_InitStructure.USART_Parity = USART_Parity_No;
-	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
-	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-	USART_Init(USART2, &USART_InitStructure);
-	USART_Cmd(USART2, ENABLE);
-}
-
-void uart1_init()
-{
-		USART_InitTypeDef USART_InitStruct;
-		GPIO_InitTypeDef GPIO_InitStruct, GPIO_InitStruct2;
-	    NVIC_InitTypeDef NVIC_InitStruct;
-
-	    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1,ENABLE);
-	    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB,ENABLE);
-
-	    GPIO_InitStruct.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7;
-	    GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF;
-	    GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz;
-	    GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
-	    GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_NOPULL;//GPIO_PuPd_UP;
-	    GPIO_Init(GPIOB,&GPIO_InitStruct);
-	    GPIO_PinAFConfig(GPIOB,GPIO_PinSource6,GPIO_AF_USART1);
-	    GPIO_PinAFConfig(GPIOB,GPIO_PinSource7,GPIO_AF_USART1);
-
-	    USART_InitStruct.USART_WordLength = USART_WordLength_8b;
-	    USART_InitStruct.USART_BaudRate = 115200;
-	    USART_InitStruct.USART_StopBits = USART_StopBits_1;
-	    USART_InitStruct.USART_Parity = USART_Parity_No;
-	    USART_InitStruct.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
-	    USART_InitStruct.USART_Mode = USART_Mode_Tx | USART_Mode_Rx;
-	    USART_Init(USART1,&USART_InitStruct);
-	    USART_ITConfig(USART1,USART_IT_RXNE,ENABLE);
-
-	    NVIC_InitStruct.NVIC_IRQChannel = USART1_IRQn;
-	    NVIC_InitStruct.NVIC_IRQChannelPreemptionPriority = 0;
-	    NVIC_InitStruct.NVIC_IRQChannelSubPriority = 0;
-	    NVIC_InitStruct.NVIC_IRQChannelCmd = ENABLE;
-	    NVIC_Init(&NVIC_InitStruct);
-
-	    USART_Cmd(USART1,ENABLE);
-}
-
-void USART1_puts(volatile char* s)
-{
-    while(*s)
-    {
-        while(!(USART1->SR & 0x00000040)){
-        }
-        USART_SendData(USART1,*s);
-        *s++;
-    }
-}
-
-
-
-/*
-void USART1_IRQHandler(void)
-{
-	int MAX_STRLEN = 128;
-    int i = 0;
-    if(USART_GetITStatus(USART1, USART_IT_RXNE) != RESET)
-    {
-        static uint8_t cnt = 0;
-        char t = USART_ReceiveData(USART1);
-        //USART1_putch(t);
-        if((t!='n')&&(cnt < MAX_STRLEN))
-        {
-            //received_string[cnt] = t;
-            cnt++;
-        }else{
-            cnt = 0;
-            //USART1_puts(received_string);
-            //for (i = 0; i <= MAX_STRLEN+1; i++)         // flush buffer
-            //received_string[i] = '\0';
-        }
-    }
-}
-*/
-
-void USART_puts(USART_TypeDef* USARTx, volatile char *s){
-
-    while(*s){
-        // wait until data register is empty
-        while( !(USARTx->SR & 0x00000040) );
-        USART_SendData(USARTx, *s);
-        *s++;
-    }
-}
-
-void USART1_IRQHandler(void){
-	int MAX_STRLEN=12;
-    // check if the USART1 receive interrupt flag was set
-    if( USART_GetITStatus(USART1, USART_IT_RXNE) ){
-
-        static uint8_t cnt = 0; // this counter is used to determine the string length
-        char t = USART1->DR; // the character from the USART1 data register is saved in t
-
-        if( (t != '\n') && (cnt < MAX_STRLEN) ){
-            //received_string[cnt] = t;
-            cnt++;
-        }
-        else{ // otherwise reset the character counter and print the received string
-            cnt = 0;
-            USART_puts(USART1, 'A');
-            //USART_puts(USART1, "\n");
-            //memset(received_string, 0, MAX_STRLEN+1);
-        }
-    }
-}
-void init_USART1(uint32_t baudrate){
-
-    GPIO_InitTypeDef GPIO_InitStruct;                       // this is for the GPIO pins used as TX and RX
-    USART_InitTypeDef USART_InitStruct;                     // this is for the USART1 initilization
-    NVIC_InitTypeDef NVIC_InitStructure;                    // this is used to configure the NVIC (nested vector interrupt controller)
-
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);  // Peripheral clock for USART1 (APB2) --> other USART uses APB1
-    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);   // Peripheral clock for GPIOB (PB6 = TX, PB7 = RX)
-
-    GPIO_InitStruct.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7;     // Pins 6 (TX) and 7 (RX) are used
-    GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF;               // the pins are configured as alternate function so the USART peripheral has access to them
-    GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz;          // this defines the IO speed and has nothing to do with the baudrate!
-    GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;             // this defines the output type as push pull mode (as opposed to open drain)
-    GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_UP;               // this activates the pullup resistors on the IO pins
-    GPIO_Init(GPIOB, &GPIO_InitStruct);                     // now all the values are passed to the GPIO_Init() function which sets the GPIO registers
-
-    /* The RX and TX pins are now connected to their AF
-     * so that the USART1 can take over control of the
-     * pins
-     */
-    GPIO_PinAFConfig(GPIOB, GPIO_PinSource6, GPIO_AF_USART1);
-    GPIO_PinAFConfig(GPIOB, GPIO_PinSource7, GPIO_AF_USART1);
-
-    /* Now the USART_InitStruct is used to define the
-     * properties of USART1
-     */
-    USART_InitStruct.USART_BaudRate = baudrate;             // the baudrate is set to the value we passed into this init function
-    USART_InitStruct.USART_WordLength = USART_WordLength_8b;// we want the data frame size to be 8 bits (standard)
-    USART_InitStruct.USART_StopBits = USART_StopBits_1;     // we want 1 stop bit (standard)
-    USART_InitStruct.USART_Parity = USART_Parity_No;        // we don't want a parity bit (standard)
-    USART_InitStruct.USART_HardwareFlowControl = USART_HardwareFlowControl_None; // we don't want flow control (standard)
-    USART_InitStruct.USART_Mode = USART_Mode_Tx | USART_Mode_Rx; // we want to enable the transmitter and the receiver
-    USART_Init(USART1, &USART_InitStruct);                  // again all the properties are passed to the USART_Init function which takes care of all the bit setting
-
-    USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);          // enable the USART1 receive interrupt
-
-    NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;       // we want to configure the USART1 interrupts
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;// this sets the priority group of the USART1 interrupts
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;      // this sets the subpriority inside the group
-    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;         // the USART1 interrupts are globally enabled
-    NVIC_Init(&NVIC_InitStructure);                         // the properties are passed to the NVIC_Init function which takes care of the low level stuff
-
-    USART_Cmd(USART1, ENABLE);                              // This enables the complete USART1 peripheral
-}
-
-
-void uart3_init()
-{
-		USART_InitTypeDef USART_InitStruct;
-		GPIO_InitTypeDef GPIO_InitStruct;
-	    NVIC_InitTypeDef NVIC_InitStruct;
-
-	    RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3,ENABLE);
-	    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB,ENABLE);
-
-	    GPIO_InitStruct.GPIO_Pin = GPIO_Pin_10 | GPIO_Pin_11;
-	    GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF;
-	    GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz;
-	    GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
-	    GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_NOPULL;//GPIO_PuPd_UP;
-	    GPIO_Init(GPIOB,&GPIO_InitStruct);
-	    GPIO_PinAFConfig(GPIOB,GPIO_PinSource10,GPIO_AF_USART3);
-	    GPIO_PinAFConfig(GPIOB,GPIO_PinSource11,GPIO_AF_USART3);
-
-	    USART_InitStruct.USART_WordLength = USART_WordLength_8b;
-	    USART_InitStruct.USART_BaudRate = 115200;
-	    USART_InitStruct.USART_StopBits = USART_StopBits_1;
-	    USART_InitStruct.USART_Parity = USART_Parity_No;
-	    USART_InitStruct.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
-	    USART_InitStruct.USART_Mode = USART_Mode_Tx | USART_Mode_Rx;
-	    USART_Init(USART3,&USART_InitStruct);
-	    USART_ITConfig(USART3,USART_IT_RXNE,ENABLE);
-
-	    NVIC_InitStruct.NVIC_IRQChannel = USART3_IRQn;
-	    NVIC_InitStruct.NVIC_IRQChannelPreemptionPriority = 0;
-	    NVIC_InitStruct.NVIC_IRQChannelSubPriority = 0;
-	    NVIC_InitStruct.NVIC_IRQChannelCmd = ENABLE;
-	    NVIC_Init(&NVIC_InitStruct);
-
-	    USART_Cmd(USART3,ENABLE);
-}
-
 void init() {
 	GPIO_InitTypeDef  GPIO_InitStructure;
 	// ---------- SysTick timer -------- //
@@ -359,7 +150,8 @@ void init() {
     //Motor_GPIO_Configuration();
     tim8pwm_init();
    // uart1_init();
-    uart3_init();
+    //uart3_init();
+    //uart1_init();
     //
 }
 
@@ -385,16 +177,53 @@ void EXTI0_IRQHandler(void)
 	}
 
 }
+
+void ON_RX(char* buf, short len)
+{
+	//printf("got data %d\r\n",len);
+	int i;
+	queue_element_t elem;
+	for(i=0;i<len;i++){
+		elem.data[i] = buf[i];
+	}
+	elem.len = len;
+	while (!pushQueueElement(&data_in,  elem)) {
+		//printf("\nout buffer full!!!\n");
+		osDelay(5);
+	}
+
+	//char s[128];
+	//sprintf(s,"Got size=%d\r\n",len);
+	//Usart_Send(s,n);
+
+	//int i;
+	//for(i=0;i<len;i++){
+	//	sprintf(s,"0x%X ",buf[i]);
+	//	Usart_Printf(s);
+		 //Usart_Send(&buf[i],1);
+	//}
+
+	//sprintf(s,"2 Got size=%d\r\n",len);
+	//Usart_Printf(s);
+	//Usart_Printf("\r\n");
+
+}
+
+
 volatile osThreadId thread2_id = NULL;
 
 static void Thread2(void const *arg)
 {
+	Usart_Init(115200);
+	Set_Uart_RX_Callback(ON_RX);
+
 	  while(1)
 	 {
 	   GPIO_SetBits(GPIOD, GPIO_Pin_13);
 	   osDelay(250);
 	   //
-	   USART_SendData(USART3, 'A');
+	   //Usart_Printf("A");
+	   //USART_SendData(USART1, 'A');
 	   //while(!(USART1->SR & 0x00000040)){
 	   //       }
 	   //USART_SendData(USART1,'A');
@@ -474,7 +303,11 @@ static void process_data_out(void const *arg)
 		 	    }
 		 	};
 		 	customerHID.data = *pdata;
+#if USB_USBHID
 		 	USBD_HID_SendReport(&USB_OTG_dev, (uint8_t*) &customerHID, sizeof(struct customerHID_t));
+#else
+		 	Usart_Send((char*)&customerHID.data, 1);
+#endif
 		 	osDelay(1);
 	 }
 }
@@ -630,6 +463,7 @@ static void process_command(void const *arg)
 	//unsigned char *pdata = 0;
 	while(1)
 	{
+	   	  //GPIO_ToggleBits(GPIOD, GPIO_Pin_15);
 		  e=0;
 		  //tail =
 		  getNextQueueData(&commands, &e);
@@ -664,6 +498,18 @@ static void process_data_in(void const *arg)
 		// printf("process_data_in\r\n");
 		  char checksum = 0xFF;
 		  do{
+			  printf("Not 0xEA \r\n");
+			  //------------For Debug------------
+			  /*char ch = polling_data();
+			  if (ch == 'a'){
+			  elem.data[0] = OI_OPCODE_QUERY;
+			  //elem.data[i+1]  = param[i];
+			  elem.len = 1;
+			  pushQueueElement(&commands,  elem);
+			  }
+			  */
+			 //------------For Debug-------------
+
 		  }while(polling_data() != 0xEA);
 		  checksum -= 0xEA;
 		  unsigned char Command_type_id = polling_data();
@@ -743,6 +589,12 @@ static void mainUARTThread(void const *arg)
 {
 	 osThreadDef(USER_Thread2, Thread2, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
 	 thread2_id = osThreadCreate(osThread(USER_Thread2), NULL);
+
+	 osThreadDef(USER_Thread_process_data_in, process_data_in, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
+	 thread3_id = osThreadCreate(osThread(USER_Thread_process_data_in), NULL);
+
+	 osThreadDef(USER_Thread_process_data_out, process_data_out, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
+	 thread4_id = osThreadCreate(osThread(USER_Thread_process_data_out), NULL);
 
 	 osThreadDef(USER_Thread_process_command, process_command, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
 	 thread5_id = osThreadCreate(osThread(USER_Thread_process_command), NULL);
