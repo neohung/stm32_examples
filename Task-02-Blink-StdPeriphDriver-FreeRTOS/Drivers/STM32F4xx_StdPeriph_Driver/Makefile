@@ -17,8 +17,8 @@ endif
 
 vpath %.c src
 
-CFLAGS  = -g -O2 -Wall
-CFLAGS += -mlittle-endian -mthumb -mthumb-interwork -mcpu=cortex-m4
+CFLAGS  = -DHSE_VALUE=8000000 -g -O2 -Wall
+CFLAGS += -mlittle-endian -mthumb -mthumb-interwork -nostartfiles -mcpu=cortex-m4
 
 ifeq ($(FLOAT_TYPE), hard)
 CFLAGS += -fsingle-precision-constant -Wdouble-promotion

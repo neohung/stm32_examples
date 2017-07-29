@@ -30,7 +30,7 @@ AS=$(BINPATH)arm-none-eabi-as
 OBJCOPY=$(BINPATH)arm-none-eabi-objcopy
 SIZE=$(BINPATH)arm-none-eabi-size
 
-CFLAGS  = -std=gnu99 -g -O0 -Wall -Lscripts -Tstm32_flash.ld
+CFLAGS  = -DHSE_VALUE=8000000 -std=gnu99 -g -O0 -Wall -Lscripts -Tstm32_flash.ld
 CFLAGS += -mlittle-endian -mthumb -mthumb-interwork -nostartfiles -mcpu=cortex-m4
 
 ifeq ($(FLOAT_TYPE), hard)
