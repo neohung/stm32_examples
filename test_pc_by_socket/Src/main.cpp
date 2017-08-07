@@ -149,9 +149,13 @@ void *message_read(void *arg)
         int len = recv(*psConnect, (char*)buf, sizeof(buf), 0);
         if (len > 0){
         	printf("message_read: len=%d\n",len);
-        	unsigned buflen = pushElement(&message_in_ringbuf,buf[0]);
-        	if (buflen==0){
+        	int i;
+        	for (i=0;i<len;i++){
+        	  unsigned buflen = pushElement(&message_in_ringbuf,buf[i]);
+        	  if (buflen==0){
         		printf("Full, can't push to message_in_ringbuf any more\n");
+        		break;
+        	  }
         	}
         }
         Sleep(1);
@@ -252,6 +256,23 @@ void processCommand(unsigned char Command_type_id, char* arg ,unsigned char arg_
 }
 
 char param[256];
+
+void *process_msg_in2(void *arg)
+{
+	 int s;
+	 s = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+	if (s != 0){
+		printf("pthread_setcancelstate error\n");
+		 exit(EXIT_FAILURE);
+	}
+		// ringbuf_t* pmsg_in = (ringbuf_t*)arg;
+	 while (1)
+	  {
+		 pthread_testcancel();
+		 unsigned char c = polling_data();
+		 //printf("[%d]<0x%X>\n",message_in_ringbuf.len,c);
+	  }
+}
 void *process_msg_in(void *arg)
 {
 	 int s;
@@ -267,13 +288,13 @@ void *process_msg_in(void *arg)
     	pthread_testcancel();
     	char checksum = 0xFF;
     	do{
-    		Sleep(1);
+    		//Sleep(1);
     	}while(polling_data() != 0xEA);
-    	printf("polling_data ==0xEA\n");
+    	//printf("polling_data ==0xEA\n");
     	checksum -= 0xEA;
     	unsigned char Command_type_id = polling_data();
     	checksum -= Command_type_id;
-    	printf("Command_type_id: %d\r\n",Command_type_id);
+    	//printf("Command_type_id: %d\r\n",Command_type_id);
     	unsigned char len = polling_data();
     	checksum -= len;
     	// Check len if make sense
@@ -379,13 +400,11 @@ void *thread2(void *arg)
 		puts ("A dot ('.') to exit:");
 		do {
 		    c=getch();
-		    printf("c=%c\n",c);
-		    //c='c';
 		    //putchar(c);
 		    switch (c)
 		    {
-		    case 'w': //OI_OPCODE_MOTORCONTROL
-		    {
+		      case 'w': //OI_OPCODE_MOTORCONTROL
+		      {
 		    	dir = 1;
 		    	adir = 0;
 		    	char str[6];
@@ -399,112 +418,112 @@ void *thread2(void *arg)
 		    	str[4] = angular_speed & 0xFF;
 		    	str[5] = (angular_speed >> 8)& 0xFF;
 		    	send_message(str, sizeof(str));
-		    }
+		      }
 		    	break;
-		    case 's': //OI_OPCODE_MOTORCONTROL stop
-		   		    {
-		   		    	dir = 0;
-		   		    	adir = 0;
-		   		    	char str[6];
-		   		    	linear_speed = 0;
-		   		    	angular_speed = 0;
-		   		    	str[0] = OI_OPCODE_MOTORCONTROL;  // command type id
-		   		    	str[1] = 0x4;  // len
-		   		    	str[2] = linear_speed & 0xFF;
-		   		    	str[3] = (linear_speed >> 8) & 0xFF;
-		   		    	str[4] = angular_speed & 0xFF;
-		   		    	str[5] = (angular_speed >> 8)& 0xFF;
-		   		    	send_message(str, sizeof(str));
-		   		    }
-		   		    	break;
-		    case 'x': //OI_OPCODE_MOTORCONTROL
-		    		    {
-		    		    	dir = -1;
-		    		    	adir = 0;
-		    		    	char str[6];
-		    		    	linear_speed = dir*ls;
-		    		    	printf("linear_speed=0x%X\n",linear_speed);
-		    		    	angular_speed = 0;
-		    		    	str[0] = OI_OPCODE_MOTORCONTROL;  // command type id
-		    		    	str[1] = 0x4;  // len
-		    		    	str[2] = linear_speed & 0xFF;
-		    		    	str[3] = (linear_speed >> 8) & 0xFF;
-		    		    	str[4] = angular_speed & 0xFF;
-		    		    	str[5] = (angular_speed >> 8)& 0xFF;
-		    		    	send_message(str, sizeof(str));
-		    		    }
-		    		    break;
-		    case 'a':
-		   		    {
-		   		    	dir = 0;
-		   		    	adir = 1;
-		   		    			    		    	char str[6];
-		   		    			    		    	linear_speed = 0;
-		   		    			    		    	angular_speed = adir*as;
-		   		    			    		    	printf("linear_speed=0x%X\n",linear_speed);
-		   		    			    		    	str[0] = OI_OPCODE_MOTORCONTROL;  // command type id
-		   		    			    		    	str[1] = 0x4;  // len
-		   		    			    		    	str[2] = linear_speed & 0xFF;
-		   		    			    		    	str[3] = (linear_speed >> 8) & 0xFF;
-		   		    			    		    	str[4] = angular_speed & 0xFF;
-		   		    			    		    	str[5] = (angular_speed >> 8)& 0xFF;
-		   		    			    		    	send_message(str, sizeof(str));
-		   		    }
-		   		    break;
-		    case 'd':
-		 		   {
-		 			  dir = 0;
-		 			  adir = -1;
-		 			 char str[6];
-		 			 		   		    			    		    	linear_speed = 0;
-		 			 		   		    			    		    	angular_speed = adir*as;
-
-		 			 		   		    			    		    	str[0] = OI_OPCODE_MOTORCONTROL;  // command type id
-		 			 		   		    			    		    	str[1] = 0x4;  // len
-		 			 		   		    			    		    	str[2] = linear_speed & 0xFF;
-		 			 		   		    			    		    	str[3] = (linear_speed >> 8) & 0xFF;
-		 			 		   		    			    		    	str[4] = angular_speed & 0xFF;
-		 			 		   		    			    		    	str[5] = (angular_speed >> 8)& 0xFF;
-		 			 		   		    			    		    	send_message(str, sizeof(str));
-		 		   	}
-		 		   break;
-		    case '=':
-		    case '+':
-		    {
-		    				ls = ls+10;
-		    				if (ls > 100) ls = 100;
-		    				as = as+10;
-		    				if (as > 100) as = 100;
-		    				char str[6];
-		    				linear_speed = dir*ls;
-		    				angular_speed = adir*as;
-		    				str[0] = OI_OPCODE_MOTORCONTROL;  // command type id
-		    				str[1] = 0x4;  // len
-		    				str[2] = linear_speed & 0xFF;
-		    				str[3] = (linear_speed >> 8) & 0xFF;
-		    				str[4] = angular_speed & 0xFF;
-		    				str[5] = (angular_speed >> 8)& 0xFF;
-		    				send_message(str, sizeof(str));
-		    }
-		   		    		    break;
-		    case '-':
-		    {
-		 		    		ls = ls-10;
-		 		    		if (ls < 0) ls = 0;
-		 		    		as = as-10;
-		 		    		if (as < 0) as = 0;
-		 		    		char str[6];
-		 		    		linear_speed = dir*ls;
-		 		    		angular_speed = adir*as;
-		 		    		str[0] = OI_OPCODE_MOTORCONTROL;  // command type id
-		 		    		str[1] = 0x4;  // len
-		 		    		str[2] = linear_speed & 0xFF;
-		 		    		str[3] = (linear_speed >> 8) & 0xFF;
-		 		    		str[4] = angular_speed & 0xFF;
-		 		    		str[5] = (angular_speed >> 8)& 0xFF;
-		 		    		send_message(str, sizeof(str));
-		    }
-		 		   		    break;
+		      case 's': //OI_OPCODE_MOTORCONTROL stop
+		   	  {
+		   		dir = 0;
+		   		adir = 0;
+		   		char str[6];
+		   		linear_speed = 0;
+		   		angular_speed = 0;
+		   		str[0] = OI_OPCODE_MOTORCONTROL;  // command type id
+		   		str[1] = 0x4;  // len
+		   		str[2] = linear_speed & 0xFF;
+		   		str[3] = (linear_speed >> 8) & 0xFF;
+		   		str[4] = angular_speed & 0xFF;
+		   		str[5] = (angular_speed >> 8)& 0xFF;
+		   		send_message(str, sizeof(str));
+		   	  }
+		   		break;
+		      case 'x': //OI_OPCODE_MOTORCONTROL
+		      {
+		    	dir = -1;
+		        adir = 0;
+		    	char str[6];
+		        linear_speed = dir*ls;
+		        printf("linear_speed=0x%X\n",linear_speed);
+		        angular_speed = 0;
+		        str[0] = OI_OPCODE_MOTORCONTROL;  // command type id
+		    	str[1] = 0x4;  // len
+		        str[2] = linear_speed & 0xFF;
+		    	str[3] = (linear_speed >> 8) & 0xFF;
+		        str[4] = angular_speed & 0xFF;
+		    	str[5] = (angular_speed >> 8)& 0xFF;
+		    	send_message(str, sizeof(str));
+		      }
+		    	break;
+		      case 'a':
+		   	  {
+		   		dir = 0;
+		   		adir = 1;
+		   		char str[6];
+		   		linear_speed = 0;
+		   		angular_speed = adir*as;
+		   		printf("angular_speed=0x%X\n",angular_speed);
+		   		str[0] = OI_OPCODE_MOTORCONTROL;  // command type id
+		   		str[1] = 0x4;  // len
+		   		str[2] = linear_speed & 0xFF;
+		   		str[3] = (linear_speed >> 8) & 0xFF;
+		   		str[4] = angular_speed & 0xFF;
+		   		str[5] = (angular_speed >> 8)& 0xFF;
+		   		send_message(str, sizeof(str));
+		   	  }
+		   		break;
+		      case 'd':
+		 	  {
+		 	    dir = 0;
+		 	    adir = -1;
+		 	    char str[6];
+		 	    linear_speed = 0;
+		 		angular_speed = adir*as;
+		 		printf("angular_speed=0x%X\n",angular_speed);
+		 		str[0] = OI_OPCODE_MOTORCONTROL;  // command type id
+		 		str[1] = 0x4;  // len
+		 		str[2] = linear_speed & 0xFF;
+		 		str[3] = (linear_speed >> 8) & 0xFF;
+		 		str[4] = angular_speed & 0xFF;
+		 		str[5] = (angular_speed >> 8)& 0xFF;
+		 		send_message(str, sizeof(str));
+		 	   }
+		 		break;
+		       case '=':
+		       case '+':
+		       {
+		    	ls = ls+10;
+		        if (ls > 100) ls = 100;
+		    	as = as+10;
+		    	if (as > 100) as = 100;
+		    	char str[6];
+		    	linear_speed = dir*ls;
+		    	angular_speed = adir*as;
+		    	str[0] = OI_OPCODE_MOTORCONTROL;  // command type id
+		    	str[1] = 0x4;  // len
+		    	str[2] = linear_speed & 0xFF;
+		    	str[3] = (linear_speed >> 8) & 0xFF;
+		    	str[4] = angular_speed & 0xFF;
+		    	str[5] = (angular_speed >> 8)& 0xFF;
+		    	send_message(str, sizeof(str));
+		       }
+		   		break;
+		       case '-':
+		       {
+		 		ls = ls-10;
+		 		if (ls < 0) ls = 0;
+		 		as = as-10;
+		 		if (as < 0) as = 0;
+		 		char str[6];
+		 		linear_speed = dir*ls;
+		 		angular_speed = adir*as;
+		 		str[0] = OI_OPCODE_MOTORCONTROL;  // command type id
+		 		str[1] = 0x4;  // len
+		 		str[2] = linear_speed & 0xFF;
+		 		str[3] = (linear_speed >> 8) & 0xFF;
+		 		str[4] = angular_speed & 0xFF;
+		 		str[5] = (angular_speed >> 8)& 0xFF;
+		 		send_message(str, sizeof(str));
+		       }
+		 		break;
 
 		    case 'b': //OI_OPCODE_QUERY
 		    {
@@ -545,7 +564,6 @@ void *thread2(void *arg)
 		pthread_exit(NULL);
 		return NULL;
 }
-
 //#ifdef MINGW32
 #ifdef WIN32
 //#pragma comment(lib, "Ws2_32.lib")
@@ -681,8 +699,8 @@ SOCKET to_connection(void)
 		//if iMode != 0, non-blocking mode is enabled
 		u_long iMode = 1;
 		ioctlsocket(sConnect, FIONBIO, &iMode);
-		//addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-		addr.sin_addr.s_addr = inet_addr("192.168.31.185");
+		addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+		//addr.sin_addr.s_addr = inet_addr("192.168.31.185");
 		addr.sin_family = AF_INET;
 		addr.sin_port = htons(23);
 		int ret;
@@ -724,8 +742,8 @@ int main(void) {
 	//pthread_create(&Tid2, &attr, thread2,  (void*)usbhandle);
 	//--------------------
 	//Server Emu
-	//int PORT=1111;
-	//pthread_create(&server_tid, &attr, socketserver_thread, (void*)&PORT);
+	int PORT=23;
+	pthread_create(&server_tid, &attr, socketserver_thread, (void*)&PORT);
 	//--------------------
 	//
 	//Process Connection
