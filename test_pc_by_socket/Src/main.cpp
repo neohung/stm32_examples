@@ -351,8 +351,22 @@ void *send_query_thread(void *arg)
 }
 //----------------------------------
 
+void *thread3(void *arg)
+{
+	char c = 0;
+	do {
+			   // c=getch();
+			    printf("c=%c\n",c);
+			    Sleep(1000);
+	} while (c != '.');
+    printf("Do Cancel\n");
+    pthread_exit(NULL);
+    return NULL;
+}
+
 void *thread2(void *arg)
 {
+	 SOCKET* psConnect = (SOCKET*)arg;
 		//struct usb_dev_handle* usbhandle = (struct usb_dev_handle*)arg;
 		//int MY_EP_Out = 0x01;
 		char c;
@@ -365,6 +379,7 @@ void *thread2(void *arg)
 		puts ("A dot ('.') to exit:");
 		do {
 		    c=getch();
+		    printf("c=%c\n",c);
 		    //c='c';
 		    //putchar(c);
 		    switch (c)
@@ -506,7 +521,15 @@ void *thread2(void *arg)
 		   		str[1] = 0x0;  // len
 		   		send_message(str, sizeof(str));
 		   	}
-		   		break;
+		   	break;
+		    case 'z': //OI_OPCODE_IMUQUERY
+		    {
+		      printf("You press z\n");
+		  	  char str[6] = "abcde";
+		  	  send(*psConnect, (char*)str, 6, 0);
+		  	  //send_message(str, sizeof(str));
+		    }
+		    break;
 
 		    default:
 		    	send_message(&c,1);
@@ -639,6 +662,16 @@ SOCKET to_connection(void)
 {
 	printf("to_connection\n");
 		Sleep(10);
+#ifdef WIN32
+	//----------------- Init WS2 DLL -----------------
+	WSAData wsaData;
+	WORD version = MAKEWORD(2, 2);
+	int iResult = WSAStartup(MAKEWORD(2,2), &wsaData);
+	if (iResult != 0) {
+	  printf("Init WS2 fail\n");
+	  return NULL;
+	}
+#endif
 		//Do connection
 		SOCKADDR_IN addr;
 		SOCKET sConnect;
@@ -648,9 +681,10 @@ SOCKET to_connection(void)
 		//if iMode != 0, non-blocking mode is enabled
 		u_long iMode = 1;
 		ioctlsocket(sConnect, FIONBIO, &iMode);
-		addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+		//addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+		addr.sin_addr.s_addr = inet_addr("192.168.31.185");
 		addr.sin_family = AF_INET;
-		addr.sin_port = htons(1111);
+		addr.sin_port = htons(23);
 		int ret;
 		do {
 		  ret = connect(sConnect, (SOCKADDR*)&addr, sizeof(addr));
@@ -660,9 +694,9 @@ SOCKET to_connection(void)
 				ret = 0;
 			}else{
 				 Sleep(1000);
-				//printf("Failed to connect to server.\n");
-				//printf("Error: %d\n",WSAGetLastError());
-				//WSACleanup();
+				 printf("Failed to connect to server.\n");
+				 printf("Error: %d\n",WSAGetLastError());
+				 WSACleanup();
 			}
 		  }
 		}while(ret == SOCKET_ERROR);
@@ -690,14 +724,14 @@ int main(void) {
 	//pthread_create(&Tid2, &attr, thread2,  (void*)usbhandle);
 	//--------------------
 	//Server Emu
-	int PORT=1111;
-	pthread_create(&server_tid, &attr, socketserver_thread, (void*)&PORT);
+	//int PORT=1111;
+	//pthread_create(&server_tid, &attr, socketserver_thread, (void*)&PORT);
 	//--------------------
-	pthread_create(&Tid2, &attr, thread2,  NULL);
 	//
 	//Process Connection
 	SOCKET s = to_connection();
 	//
+	pthread_create(&Tid2, &attr, thread2,  &s);
 	pthread_create(&msg_write_handle, &attr, message_write,  &s);
 	pthread_create(&msg_read_handle, &attr, message_read,  &s);
 	pthread_create(&process_msg_in_handle, &attr, process_msg_in,  (void*)&message_in_ringbuf);
