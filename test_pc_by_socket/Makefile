@@ -38,9 +38,9 @@ CXXFLAGS += -IInc
 LIBPATHS = -LLib 
 
 # Libraries to link
-LIBS = -lm -lusb -lpthreadGC2
+LIBS = -lm -lpthreadGC2
 LIBS += -lWs2_32
-
+#LIBS += -lusb
 
 # Extra includes
 CXXFLAGS += 

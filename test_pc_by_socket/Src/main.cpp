@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <conio.h> //getch()
-#include <lusb0_usb.h>
 
 #include <pthread.h>
 
@@ -17,87 +16,6 @@
 unsigned char Buffer[128];
 ringbuf_t message_in_ringbuf;
 ringbuf_t message_out_ringbuf;
-
-
-usb_dev_handle *open_dev(unsigned short MY_VID, unsigned short MY_PID)
-{
-    struct usb_bus *bus;
-    struct usb_device *dev;
-	printf("open..\n");
-
-    for (bus = usb_get_busses(); bus; bus = bus->next)
-    {
-        for (dev = bus->devices; dev; dev = dev->next)
-        {
-			printf("show device %x, %x\n",dev->descriptor.idVendor,dev->descriptor.idProduct);
-            if (dev->descriptor.idVendor == MY_VID
-                    && dev->descriptor.idProduct == MY_PID)
-            {
-                return usb_open(dev);
-            }
-        }
-    }
-    return NULL;
-}
-
-struct usb_dev_handle* usbhid_start(unsigned short PID, unsigned short VID, int INTF)
-{
-		usb_init(); // initialize the library
-		usb_find_busses(); // find all busses
-		usb_find_devices(); // find all connected devices
-		struct usb_dev_handle* usbhandle = NULL;
-		if (!(usbhandle = open_dev(PID, VID)))
-		{
-		        printf("error opening device: \n%s\n", usb_strerror());
-		        exit(0);
-		}
-		else
-		{
-		    printf("success: device %04X:%04X opened\n", PID, VID);
-		}
-	    //
-		//int MY_INTF = 0;
-		if (usb_claim_interface(usbhandle, INTF) < 0)  //dfu_bInterfaceNumber
-		{
-			printf("error claiming interface #%d:\n%s\n", INTF, usb_strerror());
-			usb_close(usbhandle);
-			exit(0);
-		}
-		return usbhandle;
-}
-
-void usbhid_stop(struct usb_dev_handle* usbhandle, int INTF)
-{
-	usb_release_interface(usbhandle, INTF);
-	usb_close(usbhandle);
-}
-
-void usbhid_send(struct usb_dev_handle* usbhandle, int ep, char* buf, unsigned int len)
-{
-	const static int timeout=1000; // timeout in ms
-	int res = usb_interrupt_write(usbhandle, ep, buf, len, timeout);
-	if( res < 0 )
-	{
-	     perror("USB interrupt write");
-	     usbhid_stop(usbhandle,0);
-	     system("pause");
-	     exit(0);
-	}
-}
-
-
-bool usbhid_read(struct usb_dev_handle* usbhandle, int ep, char* buf, unsigned int len)
-{
-	int res;
-	pthread_testcancel();
-	//if (usbhandle)
-	res = usb_interrupt_read(usbhandle, ep, buf, len, 1000);
-	if (res > 0){
-		return true;
-	}else{
-		return false;
-	}
-}
 
 pthread_t msg_read_handle, process_msg_in_handle, msg_write_handle, Tid2, Tid1;
 
@@ -148,9 +66,10 @@ void *message_read(void *arg)
         //int len = usbhid_read(usbhandle, MY_EP_In, buf, 1);
         int len = recv(*psConnect, (char*)buf, sizeof(buf), 0);
         if (len > 0){
-        	printf("message_read: len=%d\n",len);
+        	//printf("message_read: len=%d\n",len);
         	int i;
         	for (i=0;i<len;i++){
+        	  //printf("Push [0x%X] into message_in_ringbuf\n", (unsigned char)buf[i]);
         	  unsigned buflen = pushElement(&message_in_ringbuf,buf[i]);
         	  if (buflen==0){
         		printf("Full, can't push to message_in_ringbuf any more\n");
@@ -164,14 +83,14 @@ void *message_read(void *arg)
     return NULL;
 }
 
-unsigned char polling_data(void)
+unsigned char polling_data(ringbuf_t* pmsg_in)
 {
 	unsigned char* pdata;
 	//unsigned int tail;
 	while(1){
     	pthread_testcancel();
 		//tail =
-		getNextData(&message_in_ringbuf, &pdata);
+		getNextData(pmsg_in, &pdata);
 	    if (pdata){
 	    		//printf("data[%d]=0x%X\n",(tail-1)&(RINGBUF_MAX_LENGTH-1),*pdata);
 	    		break;
@@ -256,23 +175,6 @@ void processCommand(unsigned char Command_type_id, char* arg ,unsigned char arg_
 }
 
 char param[256];
-
-void *process_msg_in2(void *arg)
-{
-	 int s;
-	 s = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-	if (s != 0){
-		printf("pthread_setcancelstate error\n");
-		 exit(EXIT_FAILURE);
-	}
-		// ringbuf_t* pmsg_in = (ringbuf_t*)arg;
-	 while (1)
-	  {
-		 pthread_testcancel();
-		 unsigned char c = polling_data();
-		 //printf("[%d]<0x%X>\n",message_in_ringbuf.len,c);
-	  }
-}
 void *process_msg_in(void *arg)
 {
 	 int s;
@@ -281,7 +183,7 @@ void *process_msg_in(void *arg)
 		 printf("pthread_setcancelstate error\n");
 		 exit(EXIT_FAILURE);
 	 }
-	// ringbuf_t* pmsg_in = (ringbuf_t*)arg;
+	 ringbuf_t* pmsg_in = (ringbuf_t*)arg;
     while (1)
     {
     	//set cancel interrupt point
@@ -289,13 +191,13 @@ void *process_msg_in(void *arg)
     	char checksum = 0xFF;
     	do{
     		//Sleep(1);
-    	}while(polling_data() != 0xEA);
+    	}while(polling_data(pmsg_in) != 0xEA);
     	//printf("polling_data ==0xEA\n");
     	checksum -= 0xEA;
-    	unsigned char Command_type_id = polling_data();
+    	unsigned char Command_type_id = polling_data(pmsg_in);
     	checksum -= Command_type_id;
     	//printf("Command_type_id: %d\r\n",Command_type_id);
-    	unsigned char len = polling_data();
+    	unsigned char len = polling_data(pmsg_in);
     	checksum -= len;
     	// Check len if make sense
     	if (len > 16){
@@ -305,16 +207,15 @@ void *process_msg_in(void *arg)
     	//printf("len: %d\r\n",len);
     	int i;
     	for (i=0;i<len;i++){
-    		param[i] = polling_data();
+    		param[i] = polling_data(pmsg_in);
     		checksum -= param[i];
     	}
-    	char crc = polling_data();
+    	char crc = polling_data(pmsg_in);
     	if (crc != checksum){
     		printf("Checksum error, skip this\r\n");
     		printf("read crc=0x%X, should be 0x%X\r\n",crc,checksum);
     		continue;
     	}
-    	printf("Call processCommand\n");
     	// Pass command_type id and param[] and len
     	processCommand(Command_type_id, param, len);
     }
@@ -369,23 +270,12 @@ void *send_query_thread(void *arg)
 		send_message(str, sizeof(str));
 		Sleep(500);
 	}
+	pthread_exit(NULL);
+	return NULL;
 }
 //----------------------------------
 
-void *thread3(void *arg)
-{
-	char c = 0;
-	do {
-			   // c=getch();
-			    printf("c=%c\n",c);
-			    Sleep(1000);
-	} while (c != '.');
-    printf("Do Cancel\n");
-    pthread_exit(NULL);
-    return NULL;
-}
-
-void *thread2(void *arg)
+void *thread1(void *arg)
 {
 	 SOCKET* psConnect = (SOCKET*)arg;
 		//struct usb_dev_handle* usbhandle = (struct usb_dev_handle*)arg;
@@ -560,10 +450,58 @@ void *thread2(void *arg)
 		pthread_cancel(process_msg_in_handle);
 		pthread_cancel(msg_read_handle);
 		pthread_cancel(msg_write_handle);
-		pthread_cancel(Tid1);
+		pthread_cancel(Tid2);
 		pthread_exit(NULL);
 		return NULL;
 }
+
+SOCKET to_connection(void)
+{
+	printf("to_connection\n");
+		Sleep(10);
+#ifdef WIN32
+	//----------------- Init WS2 DLL -----------------
+	WSAData wsaData;
+	//WORD version = MAKEWORD(2, 2);
+	int iResult = WSAStartup(MAKEWORD(2,2), &wsaData);
+	if (iResult != 0) {
+	  printf("Init WS2 fail\n");
+	  return 0;
+	}
+#endif
+		//Do connection
+		SOCKADDR_IN addr;
+		SOCKET sConnect;
+		sConnect = socket(AF_INET, SOCK_STREAM, 0);
+		//set the socket I/O mode
+		//if iMode = 0, blocking is enabled
+		//if iMode != 0, non-blocking mode is enabled
+		u_long iMode = 1;
+		ioctlsocket(sConnect, FIONBIO, &iMode);
+		addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+		//addr.sin_addr.s_addr = inet_addr("192.168.31.185");
+		addr.sin_family = AF_INET;
+		addr.sin_port = htons(23);
+		int ret;
+		do {
+		  ret = connect(sConnect, (SOCKADDR*)&addr, sizeof(addr));
+		  if (ret){
+			if( WSAGetLastError() == WSAEWOULDBLOCK){
+				printf("Attempting to connect. %d\n",ret);
+				ret = 0;
+			}else{
+				 Sleep(1000);
+				 printf("Failed to connect to server.\n");
+				 printf("Error: %d\n",WSAGetLastError());
+				 WSACleanup();
+			}
+		  }
+		}while(ret == SOCKET_ERROR);
+		printf("connected, ret = %d\n",ret);
+		return sConnect;
+}
+
+//----------------------------------------------------------------------
 //#ifdef MINGW32
 #ifdef WIN32
 //#pragma comment(lib, "Ws2_32.lib")
@@ -586,7 +524,7 @@ void *socketserver_thread(void *arg)
 #ifdef WIN32
 	//----------------- Init WS2 DLL -----------------
 	WSAData wsaData;
-	WORD version = MAKEWORD(2, 2);
+	//WORD version = MAKEWORD(2, 2);
 	int iResult = WSAStartup(MAKEWORD(2,2), &wsaData);
 	if (iResult != 0) {
 	  printf("Init WS2 fail\n");
@@ -634,7 +572,9 @@ void *socketserver_thread(void *arg)
 		pthread_testcancel();
 		unsigned char message[200];
 		ZeroMemory(message, 200);
-		int n = recv(sConnect, (char*)message, sizeof(message), 0);
+		//int n =
+		recv(sConnect, (char*)message, sizeof(message), 0);
+		/*
 		if (n > 0){
 		  int i;
 		  printf("Size %d\n[ ",n);
@@ -642,15 +582,16 @@ void *socketserver_thread(void *arg)
 		    printf("0x%X ",message[i]);
 		  printf(" ]\n");
 		}
+		*/
 		//(message[0] == 0xEA)
-		if ((message[0] == 0x03) && (message[1] == 0x0)&& (message[2] == 0x12))
+		if ((message[0] == OI_OPCODE_QUERY) && (message[1] == 0x0)&& (message[2] == 0x12))
 		{
-		  printf("It is Query command\n");
+		  //printf("It is ODOM Query command\n");
 		  int x = 0x0001; //mm
-		  	int y = 0x0002; //mm
-		  	int theta = 0x0003; //degree 0~360
-		  	int linear_speed = 0x0004; //mm
-		  	int angular_speed = 0x0005; //mm
+		  int y = 0x0002; //mm
+		  int theta = 0x0003; //degree 0~360
+		  int linear_speed = 0x0004; //mm
+		  int angular_speed = 0x0005; //mm
 		  message[0] = 0xEA;
 		  message[1] = OI_OPCODE_ODOMUPDATE;
 		  message[2] = 10; //len
@@ -672,75 +613,40 @@ void *socketserver_thread(void *arg)
 		  message[13] = crc;
 		  send(sConnect, (char*)message, 14,0);
 		}
-		Sleep(10);
-	}
-}
-
-SOCKET to_connection(void)
-{
-	printf("to_connection\n");
-		Sleep(10);
-#ifdef WIN32
-	//----------------- Init WS2 DLL -----------------
-	WSAData wsaData;
-	WORD version = MAKEWORD(2, 2);
-	int iResult = WSAStartup(MAKEWORD(2,2), &wsaData);
-	if (iResult != 0) {
-	  printf("Init WS2 fail\n");
-	  return NULL;
-	}
-#endif
-		//Do connection
-		SOCKADDR_IN addr;
-		SOCKET sConnect;
-		sConnect = socket(AF_INET, SOCK_STREAM, 0);
-		//set the socket I/O mode
-		//if iMode = 0, blocking is enabled
-		//if iMode != 0, non-blocking mode is enabled
-		u_long iMode = 1;
-		ioctlsocket(sConnect, FIONBIO, &iMode);
-		addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-		//addr.sin_addr.s_addr = inet_addr("192.168.31.185");
-		addr.sin_family = AF_INET;
-		addr.sin_port = htons(23);
-		int ret;
-		do {
-		  ret = connect(sConnect, (SOCKADDR*)&addr, sizeof(addr));
-		  if (ret){
-			if( WSAGetLastError() == WSAEWOULDBLOCK){
-				printf("Attempting to connect. %d\n",ret);
-				ret = 0;
-			}else{
-				 Sleep(1000);
-				 printf("Failed to connect to server.\n");
-				 printf("Error: %d\n",WSAGetLastError());
-				 WSACleanup();
+		if ((message[0] == OI_OPCODE_IMUQUERY) && (message[1] == 0x0)&& (message[2] == 0x11))
+		{
+			//printf("It is IMU Query command\n");
+			int yaw = 0x0001; //-180~180
+			int pitch = 0x0002; //-180~180
+			int roll = 0x0003; //-180~180
+			message[0] = 0xEA;
+			message[1] = OI_OPCODE_IMUSTATE;  // command type id
+			message[2] = 6;  // len
+			message[3] = yaw & 0xFF;
+			message[4] = (yaw >> 8) & 0xFF;
+			message[5] = pitch & 0xFF;
+			message[6] = (pitch >> 8)& 0xFF;
+			message[7] = roll & 0xFF;
+			message[8] = (roll >> 8)& 0xFF;
+			int i=0;
+			char crc=0xFF;
+			for (i=0;i<9;i++){
+			  crc -=  message[i];
 			}
-		  }
-		}while(ret == SOCKET_ERROR);
-		printf("connected, ret = %d\n",ret);
-		return sConnect;
+			message[9] = crc;
+			send(sConnect, (char*)message, 10,0);
+		}
+		Sleep(10);
+	}
 }
+//----------------------------------------------------------------------
 
 int main(void) {
-	//struct usb_dev_handle* usbhandle  = usbhid_start(0x16C0,0x05DF,0);
-	//
 	 ringbufInit(&message_in_ringbuf);
 	 ringbufInit(&message_out_ringbuf);
-	//
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-	// read HID data and push into message_in_ringbuf
-	//------------------------------------------------------------------------
-	//pthread_create(&msg_read_handle, &attr, message_read,  (void*)usbhandle);
-	//pthread_create(&msg_write_handle, &attr, message_write,  (void*)usbhandle);
-	//------------------------------------------------------------------------
-	// Process message_in_ringbuf and parse command
-	//pthread_create(&process_msg_in_handle, &attr, process_msg_in,  (void*)&message_in_ringbuf);
-	//-------------------------------------------------------------------------
-	//pthread_create(&Tid2, &attr, thread2,  (void*)usbhandle);
-	//--------------------
 	//Server Emu
 	int PORT=23;
 	pthread_create(&server_tid, &attr, socketserver_thread, (void*)&PORT);
@@ -749,24 +655,23 @@ int main(void) {
 	//Process Connection
 	SOCKET s = to_connection();
 	//
-	pthread_create(&Tid2, &attr, thread2,  &s);
+	pthread_create(&Tid1, &attr, thread1,  &s);
 	pthread_create(&msg_write_handle, &attr, message_write,  &s);
 	pthread_create(&msg_read_handle, &attr, message_read,  &s);
 	pthread_create(&process_msg_in_handle, &attr, process_msg_in,  (void*)&message_in_ringbuf);
 	//-------------------------------------------------------------------------
-	//pthread_create(&Tid1, &attr, send_query_thread,  (void*)usbhandle);
+	pthread_create(&Tid2, &attr, send_query_thread,  NULL);
 	//------------------------------------------------------------------------
 	void *ret;
-	//pthread_join(process_msg_in_handle, &ret);
-	//pthread_join(msg_read_handle, &ret);
-	//pthread_join(msg_write_handle, &ret);
-	//pthread_join(Tid1, &ret);
+	pthread_join(process_msg_in_handle, &ret);
+	pthread_join(msg_read_handle, &ret);
+	pthread_join(msg_write_handle, &ret);
 	pthread_join(Tid2, &ret);
-	printf("Tid2 finish\n");
+	pthread_join(Tid1, &ret);
+	printf("Tid1 finish\n");
 	pthread_attr_destroy(&attr);
 	//pthread_kill(Tid1, 9); //SIGKILL
 	puts("Finish");
-	//usbhid_stop(usbhandle,0);
 	pthread_mutex_destroy(&mutex_send_message);
 	system("pause");
 	return EXIT_SUCCESS;
