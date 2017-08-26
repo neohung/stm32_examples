@@ -269,11 +269,13 @@ void *send_query_thread(void *arg)
 		str[1] = 0x0;  // len
 		send_message(str, sizeof(str));
 		Sleep(500);
+		//printf("send send_query_thread\n");
 	}
 	pthread_exit(NULL);
 	return NULL;
 }
 //----------------------------------
+SOCKET sConnect;
 
 void *thread1(void *arg)
 {
@@ -447,6 +449,11 @@ void *thread1(void *arg)
 		    Sleep(50);
 		} while (c != '.');
 		printf("Do Cancel\n");
+		//
+		printf("Close Socket\n");
+		closesocket(sConnect);
+		WSACleanup();
+		printf("Close pthread\n");
 		pthread_cancel(process_msg_in_handle);
 		pthread_cancel(msg_read_handle);
 		pthread_cancel(msg_write_handle);
@@ -457,7 +464,7 @@ void *thread1(void *arg)
 
 SOCKET to_connection(void)
 {
-	printf("to_connection\n");
+	printf("to_connection now\n");
 		Sleep(10);
 #ifdef WIN32
 	//----------------- Init WS2 DLL -----------------
@@ -466,25 +473,50 @@ SOCKET to_connection(void)
 	int iResult = WSAStartup(MAKEWORD(2,2), &wsaData);
 	if (iResult != 0) {
 	  printf("Init WS2 fail\n");
+	  exit(-1);
 	  return 0;
 	}
 #endif
 		//Do connection
 		SOCKADDR_IN addr;
-		SOCKET sConnect;
 		sConnect = socket(AF_INET, SOCK_STREAM, 0);
+		if(sConnect==INVALID_SOCKET)
+		{
+			 printf("INVALID_SOCKET\n");
+			 exit(-1);
+		}
 		//set the socket I/O mode
 		//if iMode = 0, blocking is enabled
 		//if iMode != 0, non-blocking mode is enabled
-		u_long iMode = 1;
-		ioctlsocket(sConnect, FIONBIO, &iMode);
-		addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-		//addr.sin_addr.s_addr = inet_addr("192.168.31.185");
-		addr.sin_family = AF_INET;
-		addr.sin_port = htons(23);
-		int ret;
+		//u_long iMode = 1;
+		//ioctlsocket(sConnect, FIONBIO, &iMode);
+
+
+		sockaddr_in clientService;
+		clientService.sin_family = AF_INET;
+		clientService.sin_addr.s_addr = inet_addr("192.168.31.185");
+		clientService.sin_port = htons(23);
+
+		iResult = connect(sConnect, (SOCKADDR *) & clientService, sizeof (clientService));
+
+		while(iResult == SOCKET_ERROR){
+			Sleep(1000);
+			printf("Try reconnect\n");
+			iResult = connect(sConnect, (SOCKADDR *) & clientService, sizeof (clientService));
+		}
+
+		/*
 		do {
-		  ret = connect(sConnect, (SOCKADDR*)&addr, sizeof(addr));
+		  //ret = connect(sConnect, (SOCKADDR*)&addr, sizeof(addr));
+		  if(connect(sConnect,(SOCKADDR*)(&addr),sizeof(addr))!=0)
+		     {
+		         printf("Failed to establish connection with server\r\n");
+		         WSACleanup();
+		         system("PAUSE");
+		         exit(-1);
+		         return 0;
+		     }
+		  printf("ret=%d\n",ret);
 		  if (ret){
 			if( WSAGetLastError() == WSAEWOULDBLOCK){
 				printf("Attempting to connect. %d\n",ret);
@@ -496,8 +528,9 @@ SOCKET to_connection(void)
 				 WSACleanup();
 			}
 		  }
-		}while(ret == SOCKET_ERROR);
-		printf("connected, ret = %d\n",ret);
+		//}while(ret == SOCKET_ERROR);
+		}while(ret == INVALID_SOCKET);
+		*/
 		return sConnect;
 }
 
@@ -648,8 +681,8 @@ int main(void) {
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 	//Server Emu
-	int PORT=23;
-	pthread_create(&server_tid, &attr, socketserver_thread, (void*)&PORT);
+	//int PORT=23;
+	//pthread_create(&server_tid, &attr, socketserver_thread, (void*)&PORT);
 	//--------------------
 	//
 	//Process Connection
