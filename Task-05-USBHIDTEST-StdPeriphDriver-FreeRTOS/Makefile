@@ -42,8 +42,8 @@ endif
 
 ###################################################
 
-vpath %.c src
-vpath %.a lib
+vpath %.c Src
+vpath %.a Lib
 
 ROOT=$(shell pwd)
 

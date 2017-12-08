@@ -15,7 +15,7 @@ endif
 
 ###################################################
 
-vpath %.c src
+vpath %.c Src
 
 CFLAGS  = -DHSE_VALUE=8000000 -g -O2 -Wall
 CFLAGS += -mlittle-endian -mthumb -mthumb-interwork -nostartfiles -mcpu=cortex-m4

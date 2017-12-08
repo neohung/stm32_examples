@@ -15,7 +15,7 @@ endif
 
 ###################################################
 
-vpath %.c src
+vpath %.c Src
 
 CFLAGS  = -DHSE_VALUE=8000000 -g -O2 -Wall
 CFLAGS += -mlittle-endian -mthumb -mthumb-interwork -nostartfiles -mcpu=cortex-m4
@@ -50,7 +50,7 @@ LIBNAME = libstdperiph.a
 
 all: $(LIBNAME)
 
-%.o : %.c
+%.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $^
 
 $(LIBNAME): $(OBJS)
@@ -58,4 +58,4 @@ $(LIBNAME): $(OBJS)
 
 clean:
 	rm -f $(OBJS) $(LIBNAME)
-	
+

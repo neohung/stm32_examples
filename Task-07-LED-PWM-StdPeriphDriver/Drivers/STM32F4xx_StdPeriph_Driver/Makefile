@@ -15,7 +15,7 @@ endif
 
 ###################################################
 
-vpath %.c src
+vpath %.c Src
 
 CFLAGS  = -g -O2 -Wall
 CFLAGS += -mlittle-endian -mthumb -mthumb-interwork -mcpu=cortex-m4
